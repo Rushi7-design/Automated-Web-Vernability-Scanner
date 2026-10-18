@@ -1,0 +1,5 @@
+# AWVS Auto-Scan Target List
+# Add one target URL per line to scan them automatically.
+http://127.0.0.1:8888
+
+http://127.0.0.1:8888/test-trigger

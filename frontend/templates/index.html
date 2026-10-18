@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWVS — Automated Web Vulnerability Scanner</title>
+  <meta name="description" content="Industry-grade automated web vulnerability scanner with CVSS scoring, 15+ detection modules, real-time logs and professional reports.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash-msg {{ category }}">{{ message }}</div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="landing-hero">
+
+  <span class="landing-badge">🛡️ Academic Security Research Tool &middot; AWVS v4.0</span>
+
+  <h1 class="landing-title">
+    Industry-Grade<br>
+    <span>Web Vulnerability</span><br>
+    Scanner
+  </h1>
+
+  <p class="landing-subtitle">
+    Automated security assessment with CVSS scoring, 15+ detection modules,
+    real-time SSE log streaming, and professional PDF/JSON/CSV/XML reports.
+  </p>
+
+  <div class="landing-actions">
+    <a href="{{ url_for('auth.login') }}" class="btn btn-primary btn-xl">🔓 Sign In</a>
+    <a href="{{ url_for('auth.register') }}" class="btn btn-ghost btn-xl">✨ Create Account</a>
+  </div>
+
+  <!-- Feature cards -->
+  <div class="landing-features">
+    {% for icon, title, desc in [
+      ('📡', 'Nmap Port Scan', 'Active service identification and NSE script emulation (anonymous logins, exposed DBs)'),
+      ('🕷️', 'BFS Crawler', 'Breadth-first crawl discovering all pages, forms, parameters, and inputs'),
+      ('💉', 'Burp Core Fuzzer', 'SQL Injection, XSS, CSRF, HTTP verb tampering, and parameter pollution fuzzing'),
+      ('⚡', 'Advanced Checks', 'Command Injection, Path Traversal, Cookie Security, XXE, HTTP methods audit'),
+      ('📊', 'CVSS Scoring', 'Scoring engine mapping findings to CWE IDs and OWASP Top 10 categories'),
+      ('📄', 'Pro Reports', 'PDF, HTML, JSON, CSV, XML export with executive summary and risk score'),
+    ] %}
+    <div class="feature-card">
+      <div class="feature-icon">{{ icon }}</div>
+      <div class="feature-title">{{ title }}</div>
+      <div class="feature-desc">{{ desc }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Stats row -->
+  <div style="margin-top:3rem; padding-top:2rem; border-top:1px solid var(--border); width:100%; max-width:900px; display:flex; justify-content:center; gap:3rem; flex-wrap:wrap;">
+    {% for stat, label in [('15+','Vuln Types'),('CVSS 3.1','Scoring'),('5','Export Formats'),('Real-time','SSE Logs'),('4','Scan Profiles')] %}
+    <div style="text-align:center;">
+      <div style="font-size:1.7rem; font-weight:900; color:var(--accent-light); letter-spacing:-0.04em;">{{ stat }}</div>
+      <div style="font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.08em; margin-top:0.2rem;">{{ label }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div style="margin-top:2.5rem; font-size:0.75rem; color:var(--text-muted); text-align:center; max-width:500px;">
+    ⚠️ For authorized security testing only &middot; Academic research project<br>
+    Only scan applications you own or have written permission to test.
+  </div>
+
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% block title %}System Settings{% endblock %}
+{% block topbar_title %}⚙️ System Settings & Monitor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">System Settings & Health</h1>
+    <p class="page-subtitle">Configure scanner limits, default ports, and monitor daemon health metrics</p>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.5rem; align-items:start;">
+
+  <!-- Column 1: Configuration Form -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">⚙️ Scanner Parameter Configurations</span></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('admin.save_system_config') }}">
+        
+        <h3 style="font-size:0.85rem; color:var(--accent-light); margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:4px;">🕷️ BFS CRAWLER LIMITS</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" for="max_crawl_depth">Max Crawl Depth</label>
+            <input type="number" id="max_crawl_depth" name="max_crawl_depth" class="form-control" value="{{ config_data.MAX_CRAWL_DEPTH }}" required min="1" max="10">
+            <span style="font-size:0.68rem; color:var(--text-muted);">Folder/link recursion limit</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="max_crawl_pages">Max Pages Checked</label>
+            <input type="number" id="max_crawl_pages" name="max_crawl_pages" class="form-control" value="{{ config_data.MAX_CRAWL_PAGES }}" required min="5" max="1000">
+            <span style="font-size:0.68rem; color:var(--text-muted);">Max links crawled per scan</span>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top:10px;">
+          <label class="form-label" for="request_timeout">HTTP Connection Timeout (seconds)</label>
+          <input type="number" id="request_timeout" name="request_timeout" class="form-control" value="{{ config_data.REQUEST_TIMEOUT }}" required min="2" max="120">
+          <span style="font-size:0.68rem; color:var(--text-muted);">Socket connection/read timeout</span>
+        </div>
+
+        <h3 style="font-size:0.85rem; color:var(--accent-light); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:4px;">🔭 RECONNAISSANCE LIMITS</h3>
+        <div class="form-group">
+          <label class="form-label" for="default_scan_ports">Target Scan Ports (Comma Separated)</label>
+          <input type="text" id="default_scan_ports" name="default_scan_ports" class="form-control" value="{{ config_data.DEFAULT_SCAN_PORTS }}" required>
+          <span style="font-size:0.68rem; color:var(--text-muted);">Default ports scanned during technology recon</span>
+        </div>
+
+        <h3 style="font-size:0.85rem; color:var(--accent-light); margin-top:20px; margin-bottom:12px; border-bottom:1px solid var(--border); padding-bottom:4px;">🔑 API SECURITY CREDENTIALS</h3>
+        <div class="form-group">
+          <label class="form-label" for="api_key">System-Wide REST API Key</label>
+          <input type="text" id="api_key" name="api_key" class="form-control" value="{{ config_data.API_KEY }}" required>
+          <span style="font-size:0.68rem; color:var(--text-muted);">API Key used by CI/CD integrations & Chrome Extension</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem; width:100%;">💾 Apply & Persist Configurations</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Column 2: System Health and Stats -->
+  <div style="display:flex; flex-direction:column; gap:1.5rem;">
+    
+    <!-- System Health Card -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">🖥️ Server Diagnostics</span></div>
+      <div class="card-body" style="padding:0.75rem;">
+        <table style="width:100%; font-size:0.85rem;">
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Operating System</td><td style="text-align:right; font-weight:700;">{{ system_stats.os }} ({{ system_stats.release }})</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Python Version</td><td style="text-align:right; font-weight:700; font-family:var(--font-mono);">{{ system_stats.python }}</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Active Threads</td><td style="text-align:right; font-weight:700;">{{ system_stats.threads }}</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Running Scan Tasks</td><td style="text-align:right; font-weight:700; color:var(--high);">{{ system_stats.active_scans }}</td></tr>
+          {% if system_stats.cpu_percent is not none %}
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Server CPU Load</td><td style="text-align:right; font-weight:700; color:#10b981;">{{ system_stats.cpu_percent }}%</td></tr>
+          {% endif %}
+          {% if system_stats.memory_percent is not none %}
+          <tr><td style="padding:8px 4px; color:var(--text-muted);">Server RAM Usage</td><td style="text-align:right; font-weight:700;">{{ system_stats.memory_percent }}%</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+
+    <!-- MongoDB Stats Card -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">🗄️ MongoDB Database Diagnostics</span></div>
+      <div class="card-body" style="padding:0.75rem;">
+        <table style="width:100%; font-size:0.85rem;">
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Target database</td><td style="text-align:right; font-weight:700; font-family:var(--font-mono);">{{ db_stats.db }}</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Collections count</td><td style="text-align:right; font-weight:700;">{{ db_stats.collections }}</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Documents count</td><td style="text-align:right; font-weight:700;">{{ db_stats.objects }}</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Average Document Size</td><td style="text-align:right; font-weight:700; font-family:var(--font-mono);">{{ db_stats.avg_obj_size }} KB</td></tr>
+          <tr style="border-bottom:1px solid var(--border);"><td style="padding:8px 4px; color:var(--text-muted);">Database Size</td><td style="text-align:right; font-weight:700; font-family:var(--font-mono);">{{ db_stats.data_size }} MB</td></tr>
+          <tr><td style="padding:8px 4px; color:var(--text-muted);">Storage Space size</td><td style="text-align:right; font-weight:700; font-family:var(--font-mono);">{{ db_stats.storage_size }} MB</td></tr>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

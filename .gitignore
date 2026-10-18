@@ -1,0 +1,84 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Binaries and executables
+*.exe
+bin/*.exe
+bin/cloudflared.exe
+
+# Local Databases, state, and Flask instance directory
+instance/
+instance/*
+*.db
+*.sqlite
+*.sqlite3
+db.json
+
+# Environment variables & secrets (CRITICAL: Do not upload secrets)
+.env
+.env.*
+!.env.example
+*.env
+
+# Generated scan reports (keep folder structure via .gitkeep)
+reports/*
+!reports/.gitkeep
+backend/reports/*
+!backend/reports/.gitkeep
+
+# Logs and runtime outputs
+*.log
+*.log.*
+tunnel.log
+query
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini

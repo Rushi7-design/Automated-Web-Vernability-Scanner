@@ -1,0 +1,537 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block topbar_title %}📊 Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Security Dashboard</h1>
+    <p class="page-subtitle">Real-time overview of all vulnerability scans and risk posture</p>
+  </div>
+  <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">🚀 Advanced Scan</a>
+</div>
+
+<!-- ── SMART AUTO-SCAN WIDGET ──────────────────────────────────────────────── -->
+<div id="auto-scan-widget" style="background:linear-gradient(135deg,#060d1f 0%,#0f2040 50%,#1a3a6e 100%);border-radius:16px;padding:28px 32px;margin-bottom:1.5rem;box-shadow:0 8px 32px rgba(0,0,0,.4);color:white;border:1px solid rgba(59,130,246,0.2);position:relative;overflow:hidden;">
+
+  <!-- Glow background -->
+  <div style="position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(59,130,246,0.15),transparent 70%);pointer-events:none;"></div>
+
+  <!-- Header row -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span style="font-size:1.8rem;">🤖</span>
+      <div>
+        <div style="font-size:1.1rem;font-weight:900;letter-spacing:-0.02em;">Smart Auto-Scan</div>
+        <div style="font-size:0.75rem;color:#93c5fd;margin-top:2px;">Detects target automatically — no URL needed. Or use the bookmarklet to scan any website.</div>
+      </div>
+    </div>
+    <!-- Bookmarklet install button -->
+    <a id="bookmarklet-btn"
+       href="#"
+       title="Drag this to your bookmarks bar. Then click it on any website to scan it instantly!"
+       style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:linear-gradient(135deg,var(--accent),var(--accent-light));border-radius:10px;color:var(--text-inverse);font-weight:800;font-size:0.82rem;text-decoration:none;white-space:nowrap;box-shadow:0 2px 12px var(--accent-glow);cursor:grab;border:1px solid var(--border-light);">
+      🔖 Drag to Bookmarks Bar
+    </a>
+  </div>
+
+  <!-- Auto-detected URL notice -->
+  <div id="auto-detected-banner" style="display:none;margin-bottom:12px;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:10px 16px;font-size:0.82rem;color:#6ee7b7;display:flex;align-items:center;gap:8px;">
+    <span>🎯</span>
+    <span>Target auto-detected from your browser!</span>
+  </div>
+
+  <!-- URL input row -->
+  <div style="display:flex;gap:10px;align-items:stretch;flex-wrap:wrap;">
+    <div style="flex:1;min-width:220px;position:relative;">
+      <input type="text" id="auto-scan-url"
+             placeholder="Auto-detecting... or paste https://example.com"
+             style="width:100%;padding:14px 84px 14px 48px;font-size:0.95rem;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:10px;color:white;outline:none;font-family:inherit;transition:all 0.3s ease;"
+             onfocus="this.style.borderColor='#60a5fa';this.style.background='rgba(255,255,255,.16)'"
+             onblur="this.style.borderColor='rgba(255,255,255,.2)';this.style.background='rgba(255,255,255,.1)'">
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:1.1rem;opacity:.6;">🌐</span>
+      
+      <!-- Clipboard Auto-Detect button -->
+      <button onclick="detectFromClipboard()"
+              title="Auto-detect URL from Clipboard"
+              style="position:absolute;right:36px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:1.1rem;padding:2px;display:flex;align-items:center;"
+              onmouseover="this.style.color='var(--accent-light)'"
+              onmouseout="this.style.color='var(--text-secondary)'">📋</button>
+
+      <!-- Clear button -->
+      <button onclick="document.getElementById('auto-scan-url').value='';document.getElementById('auto-ip-preview').style.display='none';"
+              style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:1.1rem;padding:2px;">✕</button>
+    </div>
+    <button id="btn-quick-scan" onclick="launchAutoScan(false)"
+            style="padding:14px 22px;border:none;border-radius:10px;cursor:pointer;font-weight:800;font-size:0.85rem;background:linear-gradient(135deg,#059669,#10b981);color:white;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 12px rgba(5,150,105,.4);"
+            onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">⚡ Quick Scan</button>
+    <button id="btn-full-scan" onclick="launchAutoScan(true)"
+            style="padding:14px 22px;border:none;border-radius:10px;cursor:pointer;font-weight:800;font-size:0.85rem;background:linear-gradient(135deg,#10b981,#34d399);color:white;white-space:nowrap;transition:all 0.2s;box-shadow:0 2px 12px rgba(16,185,129,.4);"
+            onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">🛡️ Full Audit</button>
+  </div>
+
+  <!-- IP intel preview -->
+  <div id="auto-ip-preview" style="margin-top:14px;display:none;background:rgba(255,255,255,.07);border-radius:8px;padding:12px 16px;border:1px solid rgba(255,255,255,.1);">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:0.78rem;color:#93c5fd;">
+      <span id="aip-ip">—</span><span id="aip-version">—</span><span id="aip-country">—</span><span id="aip-isp">—</span><span id="aip-org">—</span>
+    </div>
+  </div>
+
+  <!-- Status message -->
+  <div id="auto-scan-status" style="margin-top:12px;display:none;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:12px 16px;font-size:0.85rem;color:#6ee7b7;">
+    <span id="auto-scan-msg">🔄 Starting scan...</span>
+  </div>
+
+  <!-- Bookmarklet instructions -->
+  <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:0.75rem;color:rgba(255,255,255,.4);">💡 How to scan any website instantly:</span>
+    <span style="font-size:0.75rem;color:#93c5fd;">1. Drag the purple bookmark button above to your browser bookmarks bar.</span>
+    <span style="font-size:0.75rem;color:#93c5fd;">2. Visit any website.</span>
+    <span style="font-size:0.75rem;color:#93c5fd;">3. Click the bookmark → scanner opens and starts automatically.</span>
+  </div>
+</div>
+
+<script>
+(function(){
+  // ── BUILD BOOKMARKLET ────────────────────────────────────────────────
+  var scannerOrigin = window.location.origin;
+  var bookmarkletCode = '(function(){' +
+    'var u=window.location.href;' +
+    'var w=window.open("' + scannerOrigin + '/auto?url="+encodeURIComponent(u),"_blank");' +
+    '})();';
+  var btn = document.getElementById('bookmarklet-btn');
+  if(btn){ btn.href = 'javascript:' + bookmarkletCode; }
+
+  // ── CLIPBOARD AUTO-DETECTION SYSTEM ──────────────────────────────────
+  window.detectFromClipboard = function() {
+    var urlInput = document.getElementById('auto-scan-url');
+    var banner   = document.getElementById('auto-detected-banner');
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function(text) {
+        text = text.trim();
+        if (text.startsWith("http://") || text.startsWith("https://") || (text.indexOf('.') > 0 && text.length > 4)) {
+          if (!text.startsWith("http://") && !text.startsWith("https://")) {
+            text = "https://" + text;
+          }
+          if (urlInput && urlInput.value !== text) {
+            urlInput.value = text;
+            if (banner) {
+              banner.style.display = 'flex';
+              banner.innerHTML = '<span>📋</span><span>Target auto-detected from Clipboard: <strong>' + text + '</strong></span>';
+            }
+            if (typeof fetchIpIntel === 'function') {
+              fetchIpIntel(text);
+            }
+          }
+        } else {
+          alert("Clipboard content does not look like a valid target URL.");
+        }
+      }).catch(function(err) {
+        alert("Please grant Clipboard Read permissions to auto-detect target!");
+      });
+    } else {
+      alert("Clipboard API is not supported or active in your browser context (requires HTTPS/Localhost).");
+    }
+  };
+
+  // Silently check clipboard on tab focus
+  function checkClipboardSilently() {
+    var urlInput = document.getElementById('auto-scan-url');
+    var banner   = document.getElementById('auto-detected-banner');
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      navigator.clipboard.readText().then(function(text) {
+        text = text.trim();
+        if ((text.startsWith("http://") || text.startsWith("https://")) && urlInput && urlInput.value !== text) {
+          urlInput.value = text;
+          if (banner) {
+            banner.style.display = 'flex';
+            banner.innerHTML = '<span>📋</span><span>Target auto-detected from Clipboard: <strong>' + text + '</strong></span>';
+          }
+          if (typeof fetchIpIntel === 'function') {
+            fetchIpIntel(text);
+          }
+        }
+      }).catch(function(){});
+    }
+  }
+
+  window.addEventListener('focus', checkClipboardSilently);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+      checkClipboardSilently();
+    }
+  });
+
+
+
+  // ── AUTO-DETECT URL FROM QUERY PARAM (bookmarklet sends ?url=...) ────
+  var params = new URLSearchParams(window.location.search);
+  var urlFromParam = params.get('url') || params.get('target');
+
+  // ── AUTO-DETECT FROM REFERRER ────────────────────────────────────────
+  var urlFromRef = '';
+  if(document.referrer && document.referrer.length > 5){
+    try {
+      var ref = new URL(document.referrer);
+      // Only prefill if referrer is NOT from this scanner itself
+      if(ref.origin !== window.location.origin){
+        urlFromRef = ref.origin + ref.pathname;
+      }
+    } catch(e){}
+  }
+
+  var detectedUrl = urlFromParam || urlFromRef;
+  var urlInput = document.getElementById('auto-scan-url');
+  var preview  = document.getElementById('auto-ip-preview');
+  var banner   = document.getElementById('auto-detected-banner');
+
+  if(detectedUrl && urlInput){
+    urlInput.value = detectedUrl;
+    if(banner){ banner.style.display='flex'; }
+    // Fetch IP intel for auto-detected URL
+    fetchIpIntel(detectedUrl);
+    // If came via bookmarklet (?url=...), auto-launch quick scan after 1.5s
+    if(urlFromParam){
+      banner.innerHTML = '<span>🎯</span><span>Scanning <strong>' + detectedUrl + '</strong> automatically from bookmarklet...</span>';
+      setTimeout(function(){ launchAutoScan(false); }, 1500);
+    }
+  }
+
+  // ── IP INTEL ON INPUT ────────────────────────────────────────────────
+  var debounce;
+  if(urlInput){
+    urlInput.addEventListener('input', function(){
+      clearTimeout(debounce);
+      var url = this.value.trim();
+      if(url.length < 5){ preview.style.display='none'; return; }
+      debounce = setTimeout(function(){ fetchIpIntel(url); }, 600);
+    });
+    urlInput.addEventListener('keydown', function(e){
+      if(e.key === 'Enter'){ e.preventDefault(); launchAutoScan(false); }
+    });
+  }
+
+  function fetchIpIntel(url){
+    fetch('/api/ip-intel?url=' + encodeURIComponent(url))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if(d.primary_ip){
+        document.getElementById('aip-ip').textContent     = '🖥️ ' + d.primary_ip;
+        document.getElementById('aip-version').textContent= '📡 ' + (d.ip_version||'');
+        document.getElementById('aip-country').textContent= '🌍 ' + (d.country||'');
+        document.getElementById('aip-isp').textContent    = '🏢 ' + (d.isp||'');
+        document.getElementById('aip-org').textContent    = '☁️ ' + (d.org||'');
+        preview.style.display = 'block';
+      }
+    }).catch(function(){});
+  }
+})();
+
+function launchAutoScan(full){
+  var urlInput = document.getElementById('auto-scan-url');
+  var status   = document.getElementById('auto-scan-status');
+  var msg      = document.getElementById('auto-scan-msg');
+  var url      = urlInput.value.trim();
+  if(!url){ urlInput.style.borderColor='#ef4444'; urlInput.focus(); setTimeout(function(){ urlInput.style.borderColor='rgba(255,255,255,.2)'; }, 2000); return; }
+  if(!url.startsWith('http://') && !url.startsWith('https://')){ url='https://'+url; urlInput.value=url; }
+  document.getElementById('btn-quick-scan').disabled = true;
+  document.getElementById('btn-full-scan').disabled  = true;
+  document.getElementById('btn-quick-scan').style.opacity = '0.6';
+  document.getElementById('btn-full-scan').style.opacity  = '0.6';
+  var mode = full ? '🛡️ Full Audit' : '⚡ Quick Scan';
+  msg.textContent = '🔄 Launching '+mode+' on '+url+'...';
+  status.style.display = 'block';
+  status.style.background   = 'rgba(16,185,129,.15)';
+  status.style.borderColor  = 'rgba(16,185,129,.3)';
+  msg.style.color = '#6ee7b7';
+  fetch('/api/auto-scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({target_url:url,full:full})})
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.ok){
+      msg.innerHTML = '✅ Scan #'+d.scan_id+' launched! Redirecting to live results...';
+      setTimeout(function(){ window.location.href = d.redirect_url; }, 800);
+    } else {
+      msg.textContent = '❌ '+(d.error||'Failed to start scan');
+      status.style.background = 'rgba(239,68,68,.15)';
+      status.style.borderColor = 'rgba(239,68,68,.3)';
+      msg.style.color = '#fca5a5';
+      _resetBtns();
+    }
+  }).catch(function(err){
+    msg.textContent = '❌ Network error: '+err.message;
+    status.style.background = 'rgba(239,68,68,.15)';
+    msg.style.color = '#fca5a5';
+    _resetBtns();
+  });
+}
+function _resetBtns(){
+  document.getElementById('btn-quick-scan').disabled = false;
+  document.getElementById('btn-full-scan').disabled  = false;
+  document.getElementById('btn-quick-scan').style.opacity = '1';
+  document.getElementById('btn-full-scan').style.opacity  = '1';
+}
+</script>
+
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-icon blue">🔍</div>
+    <div><div class="stat-value">{{ total_scans }}</div><div class="stat-label">Total Scans</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">🐛</div>
+    <div><div class="stat-value">{{ total_vulns }}</div><div class="stat-label">Vulnerabilities</div></div>
+  </div>
+  <div class="stat-card" style="border-color:rgba(239,68,68,0.3);">
+    <div class="stat-icon red">🔴</div>
+    <div>
+      <div class="stat-value" style="color:var(--high);">{{ total_critical + total_high }}</div>
+      <div class="stat-label">Critical + High</div>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon yellow">🟡</div>
+    <div><div class="stat-value">{{ total_medium }}</div><div class="stat-label">Medium</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon green">✅</div>
+    <div>
+      <div class="stat-value" style="color:var(--info);">
+        {{ scans | selectattr('status','equalto','completed') | list | length }}
+      </div>
+      <div class="stat-label">Completed Scans</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHARTS ROW ─────────────────────────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+
+  <!-- Severity Distribution Donut -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📊 Severity Distribution</span></div>
+    <div class="card-body" style="display:flex; flex-direction:column; align-items:center;">
+      <div style="position:relative; width:180px; height:180px;">
+        <canvas id="severityChart"></canvas>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+          <div style="font-size:2rem;font-weight:800;color:var(--text-primary);">{{ total_vulns }}</div>
+          <div style="font-size:0.65rem;color:var(--text-muted);text-transform:uppercase;">Total</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:1rem;margin-top:1rem;flex-wrap:wrap;justify-content:center;">
+        <span class="sev-pill" style="background:rgba(220,38,38,0.15);color:#dc2626;">C {{ total_critical }}</span>
+        <span class="sev-pill high">H {{ total_high }}</span>
+        <span class="sev-pill medium">M {{ total_medium }}</span>
+        <span class="sev-pill low">L {{ total_low }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Vulnerability Types Bar -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">🏆 Top Vuln Types</span></div>
+    <div class="card-body" style="height:240px;">
+      <canvas id="vulnTypeChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Scan Activity Timeline -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📈 Scan Activity</span></div>
+    <div class="card-body" style="height:240px;">
+      <canvas id="activityChart"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── RISK SCORE OVERVIEW ────────────────────────────────────────────────── -->
+{% if scans %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header"><span class="card-title">⚠️ Risk Overview by Scan</span></div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Target</th><th>Risk Score</th><th>Risk Level</th><th>Status</th><th>Findings</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for scan in scans[:8] %}
+        <tr>
+          <td class="text-muted fs-xs">{{ scan.scan_id }}</td>
+          <td class="url-cell"><a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}">{{ scan.target_url }}</a></td>
+          <td>
+            {% if scan.risk_score > 0 %}
+            <div style="display:flex;align-items:center;gap:0.5rem;">
+              <div style="width:80px;background:var(--bg-primary);border-radius:100px;height:6px;border:1px solid var(--border);overflow:hidden;">
+                <div style="height:100%;width:{{ scan.risk_score }}%;background:{% if scan.risk_score >= 75 %}#ef4444{% elif scan.risk_score >= 50 %}#f59e0b{% elif scan.risk_score >= 25 %}#3b82f6{% else %}#10b981{% endif %};border-radius:100px;"></div>
+              </div>
+              <span class="fs-xs fw-600">{{ "%.0f"|format(scan.risk_score) }}/100</span>
+            </div>
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            {% set level = scan.risk_level or 'None' %}
+            <span class="badge {% if level == 'Critical' %}badge-high{% elif level == 'High' %}badge-high{% elif level == 'Medium' %}badge-medium{% elif level == 'Low' %}badge-low{% else %}badge-info{% endif %}">
+              {{ level }}
+            </span>
+          </td>
+          <td><span class="badge badge-{{ scan.status }}">{{ scan.status | capitalize }}</span></td>
+          <td>
+            <div class="severity-mini-grid">
+              {% if scan.critical_count > 0 %}<span class="sev-pill" style="background:rgba(220,38,38,0.15);color:#dc2626;">C {{ scan.critical_count }}</span>{% endif %}
+              {% if scan.high_count > 0 %}<span class="sev-pill high">H {{ scan.high_count }}</span>{% endif %}
+              {% if scan.medium_count > 0 %}<span class="sev-pill medium">M {{ scan.medium_count }}</span>{% endif %}
+              {% if scan.vuln_count == 0 %}<span class="text-muted fs-xs">—</span>{% endif %}
+            </div>
+          </td>
+          <td><a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── RECENT SCANS ────────────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">📋 Recent Scans</span>
+    <a href="{{ url_for('scan.scan_list') }}" class="btn btn-ghost btn-sm">View All →</a>
+  </div>
+  {% if not scans %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3>No scans yet</h3>
+    <p>Start your first scan to see results here.</p>
+    <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">🚀 Start First Scan</a>
+  </div>
+  {% else %}
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>#</th><th>Target URL</th><th>Status</th><th>Findings</th><th>Started</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for scan in scans[:10] %}
+        <tr>
+          <td class="text-muted fs-xs">{{ scan.scan_id }}</td>
+          <td class="url-cell"><a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}">{{ scan.target_url }}</a></td>
+          <td>
+            <span class="badge badge-{{ scan.status }}">
+              {% if scan.status == 'running' %}<span class="pulse-dot" style="margin-right:4px"></span>{% endif %}
+              {{ scan.status | capitalize }}
+            </span>
+          </td>
+          <td>
+            <div class="severity-mini-grid">
+              {% if scan.critical_count > 0 %}<span class="sev-pill" style="background:rgba(220,38,38,0.15);color:#dc2626;">C {{ scan.critical_count }}</span>{% endif %}
+              {% if scan.high_count > 0 %}<span class="sev-pill high">H {{ scan.high_count }}</span>{% endif %}
+              {% if scan.medium_count > 0 %}<span class="sev-pill medium">M {{ scan.medium_count }}</span>{% endif %}
+              {% if scan.low_count > 0 %}<span class="sev-pill low">L {{ scan.low_count }}</span>{% endif %}
+              {% if scan.vuln_count == 0 and scan.status == 'completed' %}<span class="text-muted fs-xs">Clean ✅</span>{% endif %}
+              {% if scan.status not in ['completed', 'failed'] %}<span class="text-muted fs-xs">—</span>{% endif %}
+            </div>
+          </td>
+          <td class="text-muted fs-xs">{{ scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else '—' }}</td>
+          <td><a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">View</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#8892a4';
+Chart.defaults.borderColor = '#1e2d45';
+Chart.defaults.font.family = "'Inter', sans-serif";
+
+// ── SEVERITY DONUT ─────────────────────────────────────────────────────────
+const sevCtx = document.getElementById('severityChart');
+if (sevCtx) {
+  new Chart(sevCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+      datasets: [{
+        data: [{{ total_critical }}, {{ total_high }}, {{ total_medium }}, {{ total_low }}, {{ total_info if total_info is defined else 0 }}],
+        backgroundColor: ['#dc2626','#ef4444','#f59e0b','#3b82f6','#10b981'],
+        borderWidth: 0,
+        hoverOffset: 6,
+      }]
+    },
+    options: {
+      cutout: '72%',
+      plugins: { legend: { display: false } },
+      animation: { animateScale: true, duration: 800 },
+    }
+  });
+}
+
+// ── VULN TYPE BAR ──────────────────────────────────────────────────────────
+const typeCtx = document.getElementById('vulnTypeChart');
+if (typeCtx) {
+  const vulnTypes = {{ vuln_type_counts | tojson if vuln_type_counts is defined else '{}' }};
+  const labels = Object.keys(vulnTypes).slice(0, 6);
+  const values = labels.map(k => vulnTypes[k]);
+  new Chart(typeCtx, {
+    type: 'bar',
+    data: {
+      labels: labels.length ? labels : ['No data'],
+      datasets: [{
+        label: 'Count',
+        data: values.length ? values : [0],
+        backgroundColor: 'rgba(59,130,246,0.7)',
+        borderColor: '#3b82f6',
+        borderWidth: 1,
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#1e2d45' }, ticks: { color: '#8892a4' } },
+        y: { grid: { display: false }, ticks: { color: '#8892a4', font: { size: 10 } } }
+      },
+      animation: { duration: 700 }
+    }
+  });
+}
+
+// ── ACTIVITY LINE ──────────────────────────────────────────────────────────
+const actCtx = document.getElementById('activityChart');
+if (actCtx) {
+  const scanDates = {{ scan_dates | tojson if scan_dates is defined else '[]' }};
+  const scanCounts = {{ scan_counts | tojson if scan_counts is defined else '[]' }};
+  new Chart(actCtx, {
+    type: 'line',
+    data: {
+      labels: scanDates.length ? scanDates : ['No data'],
+      datasets: [{
+        label: 'Scans',
+        data: scanCounts.length ? scanCounts : [0],
+        borderColor: '#8b5cf6',
+        backgroundColor: 'rgba(139,92,246,0.1)',
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: '#8b5cf6',
+        pointRadius: 4,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#1e2d45' }, ticks: { color: '#8892a4', font: { size: 10 } } },
+        y: { grid: { color: '#1e2d45' }, ticks: { color: '#8892a4', stepSize: 1 } }
+      },
+      animation: { duration: 700 }
+    }
+  });
+}
+</script>
+{% endblock %}

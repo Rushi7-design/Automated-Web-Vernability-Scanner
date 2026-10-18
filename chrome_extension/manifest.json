@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "AWVS Smart Auto-Scanner",
+  "version": "4.0",
+  "description": "Auto-detects and scans active browser targets in AWVS",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:5000/*",
+    "http://localhost:5000/*",
+    "https://*.trycloudflare.com/*"
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon.png"
+  }
+}

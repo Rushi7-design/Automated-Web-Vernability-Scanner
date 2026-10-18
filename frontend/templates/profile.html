@@ -1,0 +1,97 @@
+{% extends "layout.html" %}
+{% block title %}Profile — {{ current_user.username }}{% endblock %}
+{% block topbar_title %}👤 Profile Settings{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Profile Settings</h1>
+    <p class="page-subtitle">Manage your account information and security</p>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; align-items:start;">
+
+  <!-- Account Info Card -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">👤 Account Information</span></div>
+    <div class="card-body">
+      <div style="display:flex;align-items:center;gap:1.25rem;padding:1rem;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:1.5rem;">
+        <div style="width:64px;height:64px;background:linear-gradient(135deg,var(--accent),var(--accent-light));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:800;color:white;flex-shrink:0;">
+          {{ current_user.username[0].upper() }}
+        </div>
+        <div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--text-primary);">{{ current_user.username }}</div>
+          <div style="margin-top:0.3rem;">
+            <span class="badge {% if current_user.role == 'admin' %}badge-high{% else %}badge-info{% endif %}">
+              {{ current_user.role | capitalize }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <table style="font-size:0.875rem;width:100%;">
+        <tr>
+          <td style="color:var(--text-muted);padding:0.5rem 0;width:130px;font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Username</td>
+          <td style="color:var(--text-primary);">{{ current_user.username }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:0.5rem 0;font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Role</td>
+          <td>{{ current_user.role | capitalize }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:0.5rem 0;font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Account Status</td>
+          <td><span class="badge badge-completed">Active</span></td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:0.5rem 0;font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Member Since</td>
+          <td>{{ current_user.created_at.strftime('%B %d, %Y') if current_user.created_at else 'N/A' }}</td>
+        </tr>
+        <tr>
+          <td style="color:var(--text-muted);padding:0.5rem 0;font-weight:600;font-size:0.78rem;text-transform:uppercase;letter-spacing:0.04em;">Total Scans</td>
+          <td style="color:var(--accent-light);font-weight:700;">{{ current_user.scans | length }}</td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Change Password Card -->
+  <div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">🔑 Change Password</span></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('auth.change_password') }}">
+          <div class="form-group">
+            <label class="form-label" for="current_password">Current Password</label>
+            <input type="password" id="current_password" name="current_password" class="form-control" required autocomplete="current-password">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="new_password">New Password</label>
+            <input type="password" id="new_password" name="new_password" class="form-control" required minlength="6" autocomplete="new-password">
+            <p class="fs-xs text-muted mt-1">Minimum 6 characters</p>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="confirm_password">Confirm New Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" class="form-control" required autocomplete="new-password">
+          </div>
+          <button type="submit" class="btn btn-primary">🔒 Update Password</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="card" style="border-color:rgba(59,130,246,0.2);">
+      <div class="card-header"><span class="card-title">🔗 Quick Links</span></div>
+      <div class="card-body" style="display:flex;flex-direction:column;gap:0.5rem;">
+        <a href="{{ url_for('scan.new_scan') }}" class="btn btn-ghost">🚀 Start New Scan</a>
+        <a href="{{ url_for('scan.scan_list') }}" class="btn btn-ghost">📋 My Scans</a>
+        <a href="{{ url_for('scan.dashboard') }}" class="btn btn-ghost">📊 Dashboard</a>
+        {% if current_user.role == 'admin' %}
+        <a href="{{ url_for('admin.dashboard') }}" class="btn btn-ghost">🛡️ Admin Panel</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

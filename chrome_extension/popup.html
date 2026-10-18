@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    :root {
+      --bg-matrix: #030504;
+      --bg-card: #070c09;
+      --border-matrix: #183023;
+      --border-active: #10b981;
+      --text-main: #e6fcf2;
+      --text-muted: #629c7c;
+      --accent-color: #10b981;
+      --accent-glow: rgba(16, 185, 129, 0.25);
+    }
+    body {
+      width: 290px;
+      padding: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-matrix);
+      color: var(--text-main);
+      margin: 0;
+    }
+    .header {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--accent-color);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1.5px solid var(--border-matrix);
+      padding-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .header img {
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      border: 1px solid var(--border-active);
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    select, input[type="number"] {
+      width: 100%;
+      padding: 9px;
+      background: #040806;
+      border: 1.5px solid var(--border-matrix);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-size: 0.8rem;
+      outline: none;
+      box-sizing: border-box;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    select:focus, input[type="number"]:focus {
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+    .custom-options {
+      display: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border-matrix);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      margin-bottom: 14px;
+      animation: slideDown 0.3s ease-out;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .section-title {
+      font-size: 0.65rem;
+      color: var(--accent-color);
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 8px;
+      border-bottom: 1px solid var(--border-matrix);
+      padding-bottom: 3px;
+    }
+    .checkbox-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.72rem;
+      color: var(--text-main);
+      cursor: pointer;
+    }
+    .checkbox-item input[type="checkbox"] {
+      accent-color: var(--accent-color);
+      margin: 0;
+      cursor: pointer;
+      width: 13px;
+      height: 13px;
+    }
+    .flex-row {
+      display: flex;
+      gap: 8px;
+    }
+    .flex-row .form-group {
+      flex: 1;
+      margin-bottom: 0;
+    }
+    .btn {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      border: none;
+      border-radius: 8px;
+      color: #030504;
+      font-weight: 900;
+      font-size: 0.85rem;
+      cursor: pointer;
+      box-shadow: 0 3px 12px rgba(16, 185, 129, 0.25);
+      transition: all 0.2s ease;
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-family: inherit;
+    }
+    .btn:hover {
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.55);
+      transform: translateY(-1px);
+    }
+    .btn:active {
+      transform: translateY(0);
+    }
+    .btn:disabled {
+      background: var(--border-matrix);
+      color: var(--text-muted);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    .footer {
+      font-size: 0.62rem;
+      color: #3e6d53;
+      text-align: center;
+      margin-top: 14px;
+      border-top: 1.5px solid var(--border-matrix);
+      padding-top: 8px;
+      font-family: monospace;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="icon.png" alt="AWVS">
+    <span>Scan Orchestrator</span>
+  </div>
+  
+  <!-- Profile Selector -->
+  <div class="form-group">
+    <label for="scan-profile">Audit Profile</label>
+    <select id="scan-profile">
+      <option value="quick">⚡ Quick Scan (Fastest)</option>
+      <option value="standard">🛡️ Standard Scan (Recommended)</option>
+      <option value="full" selected>🏆 Full Vulnerability Audit</option>
+      <option value="custom">⚙️ Custom Configurations...</option>
+    </select>
+  </div>
+
+  <!-- Custom options container (toggleable) -->
+  <div class="custom-options" id="custom-container">
+    <div class="section-title">Vulnerability Modules</div>
+    <div class="checkbox-group">
+      <div class="checkbox-item"><input type="checkbox" id="check-xss" checked> XSS Audit</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-sqli" checked> SQL Injection</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-csrf" checked> CSRF Check</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-headers" checked> Sec Headers</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-redirect" checked> Open Redirect</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-recon" checked> Port Scanner</div>
+      <div class="checkbox-item"><input type="checkbox" id="check-advanced"> Path Traversal</div>
+    </div>
+
+    <div class="section-title" style="margin-top: 12px;">Scope & Timeouts</div>
+    <div class="flex-row">
+      <div class="form-group">
+        <label for="max-depth" style="font-size:0.6rem;">Max Depth</label>
+        <input type="number" id="max-depth" value="3" min="1" max="10">
+      </div>
+      <div class="form-group">
+        <label for="max-pages" style="font-size:0.6rem;">Max Pages</label>
+        <input type="number" id="max-pages" value="100" min="5" max="500">
+      </div>
+      <div class="form-group">
+        <label for="timeout" style="font-size:0.6rem;">Timeout (s)</label>
+        <input type="number" id="timeout" value="10" min="2" max="120">
+      </div>
+    </div>
+    
+    <div class="section-title" style="margin-top: 12px;">API Settings</div>
+    <div class="form-group" style="margin-bottom: 0;">
+      <label for="server-url">Scanner Server URL</label>
+      <input type="text" id="server-url" value="http://127.0.0.1:5000" placeholder="http://127.0.0.1:5000">
+    </div>
+  </div>
+
+  <button class="btn" id="scan-btn">🚀 Start Vulnerability Scan</button>
+  
+  <div class="footer">AWVS v4.0 // EMERALD MATRIX // EXT</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

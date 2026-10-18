@@ -1,0 +1,509 @@
+{% extends "layout.html" %}
+{% block title %}New Scan{% endblock %}
+{% block topbar_title %}🚀 New Scan{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Configure New Scan</h1>
+    <p class="page-subtitle">Enter a target URL — live intelligence preview loads automatically</p>
+  </div>
+</div>
+
+<!-- ── SCAN PROFILES ────────────────────────────────────────────────────────── -->
+<div class="card" style="margin-bottom:1rem;">
+  <div class="card-header">
+    <span class="card-title">⚡ Scan Profile</span>
+    <span class="fs-xs text-muted">Select a preset — settings fill automatically</span>
+  </div>
+  <div class="card-body">
+    <div class="profile-grid">
+      <div class="profile-card" data-profile="quick">
+        <div class="profile-icon">⚡</div>
+        <div class="profile-name">Quick</div>
+        <div class="profile-desc">Headers · 25 pages · ~1 min</div>
+      </div>
+      <div class="profile-card selected" data-profile="standard">
+        <div class="profile-icon">🔬</div>
+        <div class="profile-name">Standard</div>
+        <div class="profile-desc">Core modules · 100 pages · ~5 min</div>
+      </div>
+      <div class="profile-card" data-profile="full">
+        <div class="profile-icon">🛡️</div>
+        <div class="profile-name">Full Audit</div>
+        <div class="profile-desc">All modules · 200 pages · ~15 min</div>
+      </div>
+      <div class="profile-card" data-profile="custom">
+        <div class="profile-icon">⚙️</div>
+        <div class="profile-name">Custom</div>
+        <div class="profile-desc">Configure below</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:1.5rem; align-items:start;">
+
+  <!-- ── LEFT: SCAN FORM ──────────────────────────────────────────────────── -->
+  <div>
+    <form method="POST" action="{{ url_for('scan.new_scan') }}" id="scan-form">
+
+      <!-- STEP 1: Target -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-header"><span class="card-title">🎯 Step 1 — Target URL</span></div>
+        <div class="card-body">
+          <div class="form-group" style="margin-bottom:0.5rem;">
+            <label class="form-label" for="target_url">Target URL *</label>
+            <div style="position:relative;">
+              <input type="text" id="target_url" name="target_url"
+                     class="form-control"
+                     placeholder="https://example.com  or  http://127.0.0.1:8888"
+                     required autocomplete="off"
+                     style="font-family:var(--font-mono); padding-right:3rem;">
+              <span id="url-spinner" style="display:none; position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); font-size:1rem;" title="Looking up target...">
+                <span class="spin">🔍</span>
+              </span>
+              <span id="url-ok" style="display:none; position:absolute; right:0.75rem; top:50%; transform:translateY(-50%); color:var(--success-light);">✓</span>
+            </div>
+            <div class="fs-xs text-muted mt-1" style="display:flex;justify-content:space-between;">
+              <span>⚠️ Only scan targets you own or have written permission to test.</span>
+              <span id="auto-scan-hint" style="color:var(--accent-light); display:none;">Live preview loading...</span>
+            </div>
+          </div>
+
+          <!-- ── LIVE IP INTELLIGENCE PREVIEW ──────────────────────────── -->
+          <div id="ip-preview" style="display:none; margin-top:1rem;">
+            <div style="background:linear-gradient(135deg, rgba(37,99,235,0.07), rgba(124,58,237,0.07));
+                        border:1px solid rgba(59,130,246,0.25); border-radius:var(--radius-sm); overflow:hidden;">
+
+              <!-- Header bar -->
+              <div style="padding:0.65rem 1rem; border-bottom:1px solid rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.6rem;">
+                  <span id="prev-flag" style="font-size:1.4rem;"></span>
+                  <div>
+                    <div style="font-size:0.85rem; font-weight:700; color:var(--text-primary);" id="prev-hostname"></div>
+                    <div style="font-size:0.72rem; color:var(--text-muted);" id="prev-location"></div>
+                  </div>
+                </div>
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                  <span id="prev-ip-badge" class="badge badge-info"></span>
+                  <span id="prev-hosting-badge" class="badge" style="background:rgba(124,58,237,0.12);color:#a78bfa;border-color:rgba(124,58,237,0.3);"></span>
+                  <span id="prev-proxy-badge" class="badge badge-high" style="display:none;">⚠️ Proxy</span>
+                </div>
+              </div>
+
+              <!-- Info grid -->
+              <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0; padding:0;">
+
+                <div class="prev-cell" id="cell-ipv4">
+                  <div class="prev-label">IPv4 Address</div>
+                  <div class="prev-val" id="prev-ipv4" style="font-family:var(--font-mono);"></div>
+                </div>
+
+                <div class="prev-cell" id="cell-ipv6">
+                  <div class="prev-label">IPv6 Address</div>
+                  <div class="prev-val" id="prev-ipv6" style="font-family:var(--font-mono);font-size:0.7rem;word-break:break-all;"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">IP Version</div>
+                  <div class="prev-val" id="prev-ipver"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">ISP / Org</div>
+                  <div class="prev-val" id="prev-isp"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">Hosting Provider</div>
+                  <div class="prev-val" id="prev-host"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">ASN</div>
+                  <div class="prev-val" id="prev-asn" style="font-family:var(--font-mono);font-size:0.75rem;"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">Timezone</div>
+                  <div class="prev-val" id="prev-tz"></div>
+                </div>
+
+                <div class="prev-cell" id="cell-ssl">
+                  <div class="prev-label">SSL Certificate</div>
+                  <div class="prev-val" id="prev-ssl"></div>
+                </div>
+
+                <div class="prev-cell">
+                  <div class="prev-label">PTR / Reverse DNS</div>
+                  <div class="prev-val" id="prev-ptr" style="font-family:var(--font-mono);font-size:0.75rem;"></div>
+                </div>
+
+              </div>
+
+              <!-- DNS records -->
+              <div id="dns-section" style="padding:0.6rem 1rem; border-top:1px solid rgba(59,130,246,0.12); font-size:0.78rem; color:var(--text-muted);">
+                <span style="font-weight:600; color:var(--text-secondary);">DNS A:</span>
+                <span id="prev-dns-a" style="font-family:var(--font-mono);"></span>
+              </div>
+
+              <!-- AUTO SCAN CTA -->
+              <div style="padding:0.75rem 1rem; border-top:1px solid rgba(59,130,246,0.15); display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+                <span class="fs-xs text-secondary">Target verified. Ready to scan.</span>
+                <div style="display:flex; gap:0.5rem;">
+                  <button type="button" id="auto-quick-btn" class="btn btn-ghost btn-sm" onclick="triggerAutoScan(false)">
+                    ⚡ Quick Scan Now
+                  </button>
+                  <button type="button" id="auto-full-btn" class="btn btn-primary btn-sm" onclick="triggerAutoScan(true)">
+                    🛡️ Full Audit Now
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- auto-scan error -->
+          <div id="ip-error" style="display:none; margin-top:0.75rem;" class="info-banner warning">
+            <span>⚠️</span>
+            <span id="ip-error-msg">Could not resolve target. Check the URL and try again.</span>
+          </div>
+
+          <div style="margin-top:1rem; display:flex; align-items:center; gap:0.75rem;">
+            <input type="text" id="scope" name="scope" class="form-control"
+                   placeholder="Scope (auto-filled)" style="font-size:0.82rem;">
+            <label style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap;">Scope</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 2: Core Modules -->
+      <div class="card" style="margin-bottom:1rem;">
+        <div class="card-header"><span class="card-title">🔬 Step 2 — Detection Modules</span></div>
+        <div class="card-body">
+          <div class="check-group">
+            <label class="check-item">
+              <input type="checkbox" name="enable_recon" id="enable_recon" checked>
+              <span class="check-label">📡 Nmap Reconnaissance</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="check_xss" id="check_xss" checked>
+              <span class="check-label">🔴 XSS Detection</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="check_sqli" id="check_sqli" checked>
+              <span class="check-label">💉 SQL Injection</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="check_csrf" id="check_csrf" checked>
+              <span class="check-label">🔁 CSRF Checks</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="check_headers" id="check_headers" checked>
+              <span class="check-label">🛡️ Security Headers</span>
+            </label>
+            <label class="check-item">
+              <input type="checkbox" name="check_redirect" id="check_redirect" checked>
+              <span class="check-label">↪️ Open Redirect</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 3: Advanced -->
+      <div class="card" style="margin-bottom:1rem; border-color:rgba(139,92,246,0.3);">
+        <div class="card-header" style="background:rgba(139,92,246,0.04);">
+          <span class="card-title">⚡ Step 3 — Advanced Modules</span>
+          <span class="badge" style="background:rgba(139,92,246,0.2);color:#8b5cf6;border-color:rgba(139,92,246,0.3);">PRO</span>
+        </div>
+        <div class="card-body">
+          <label class="check-item" style="border-color:rgba(139,92,246,0.3); margin-bottom:0.75rem;">
+            <input type="checkbox" name="check_advanced" id="check_advanced" checked>
+            <span class="check-label" style="font-weight:600; color:var(--text-primary);">⚡ Enable Burp Suite Active Audit</span>
+          </label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem;">
+            {% for icon, label in [('🗂️','Directory Brute Force'),('🍪','Cookie Security'),('🔒','SSL/TLS Analysis'),('📡','HTTP Method Testing'),('💻','Command Injection'),('📂','Path Traversal'),('📄','XXE Detection'),('🔑','Broken Auth / Rate Limit')] %}
+            <div style="display:flex;align-items:center;gap:0.5rem;padding:0.35rem 0.65rem;background:var(--bg-primary);border:1px solid var(--border);border-radius:6px;">
+              <span style="font-size:0.85rem;">{{ icon }}</span>
+              <span class="fs-xs text-secondary">{{ label }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <!-- STEP 4: Crawl settings -->
+      <div class="card" style="margin-bottom:1.25rem;">
+        <div class="card-header"><span class="card-title">⚙️ Step 4 — Crawl Settings</span></div>
+        <div class="card-body">
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1rem;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" for="max_depth">Max Depth</label>
+              <select id="max_depth" name="max_depth" class="form-control">
+                <option value="1">1 — Shallow</option>
+                <option value="2">2</option>
+                <option value="3" selected>3 — Standard</option>
+                <option value="5">5 — Deep</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" for="max_pages">Max Pages</label>
+              <select id="max_pages" name="max_pages" class="form-control">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="200">200</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin:0;">
+              <label class="form-label" for="timeout">Timeout</label>
+              <select id="timeout" name="timeout" class="form-control">
+                <option value="5">5s</option>
+                <option value="10" selected>10s</option>
+                <option value="20">20s</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:1rem;">
+        <button type="submit" class="btn btn-primary btn-lg" id="submit-btn">🚀 Launch Scan</button>
+        <a href="{{ url_for('scan.dashboard') }}" class="btn btn-ghost btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── RIGHT: SIDEBAR ───────────────────────────────────────────────────── -->
+  <div>
+    <!-- Scan Pipeline -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">📊 Scan Pipeline</span></div>
+      <div class="card-body" style="padding:0.75rem 1rem;">
+        {% for step, icon, label, desc in [
+          ('1','🌐','IP Intelligence','Geolocation · ISP · ASN · PTR'),
+          ('2','🔭','Reconnaissance','Ports · SSL · Tech stack'),
+          ('3','🕷️','BFS Crawl','All pages · Forms · Params'),
+          ('4','🧪','Core Engine','XSS · SQLi · CSRF · Headers'),
+          ('3b','⚡','Advanced','Cmd Injection · Path Traversal · XXE'),
+          ('5','📊','CVSS Scoring','CWE · OWASP Top 10'),
+          ('6','📄','Reports','PDF · JSON · CSV · XML'),
+        ] %}
+        <div style="display:flex;align-items:center;gap:0.65rem;padding:0.5rem 0;{% if not loop.last %}border-bottom:1px solid var(--border);{% endif %}">
+          <div style="width:26px;height:26px;border-radius:50%;background:rgba(59,130,246,0.12);color:var(--accent-light);display:flex;align-items:center;justify-content:center;font-size:0.7rem;font-weight:700;flex-shrink:0;">{{ step }}</div>
+          <span style="font-size:0.9rem;">{{ icon }}</span>
+          <div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--text-primary);">{{ label }}</div>
+            <div class="fs-xs text-muted">{{ desc }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Auth warning -->
+    <div class="info-banner warning">
+      <span>⚠️</span>
+      <div>
+        <div class="fs-sm fw-600">Authorization Required</div>
+        <div class="fs-xs" style="margin-top:0.2rem;">Only scan systems you own or have explicit written permission to test. Unauthorized scanning is illegal.</div>
+        <div class="fs-xs" style="margin-top:0.4rem;">Test target: <span class="inline-code">http://127.0.0.1:8888</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.prev-cell {
+  padding: 0.65rem 1rem;
+  border-right: 1px solid rgba(59,130,246,0.1);
+  border-bottom: 1px solid rgba(59,130,246,0.1);
+}
+.prev-cell:last-child { border-right: none; }
+.prev-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+.prev-val {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── IP INTELLIGENCE LIVE PREVIEW ──────────────────────────────────────────────
+let debounceTimer = null;
+let lastUrl       = '';
+let intelData     = null;
+
+const targetInput  = document.getElementById('target_url');
+const spinner      = document.getElementById('url-spinner');
+const urlOk        = document.getElementById('url-ok');
+const preview      = document.getElementById('ip-preview');
+const errorBox     = document.getElementById('ip-error');
+const autoHint     = document.getElementById('auto-scan-hint');
+const scopeInput   = document.getElementById('scope');
+
+function setEl(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val || '—';
+}
+
+function showPreview(d) {
+  intelData = d;
+  // Header
+  document.getElementById('prev-flag').textContent     = d.country_flag || '🌍';
+  document.getElementById('prev-hostname').textContent = d.hostname || '—';
+  document.getElementById('prev-location').textContent =
+    [d.city, d.region, d.country].filter(Boolean).join(', ') || 'Unknown location';
+
+  // Badges
+  const ipBadge = document.getElementById('prev-ip-badge');
+  ipBadge.textContent = d.ip_version || 'Unknown';
+  const hostBadge = document.getElementById('prev-hosting-badge');
+  hostBadge.textContent = (d.hosting_icon || '') + ' ' + (d.hosting_provider || '?');
+
+  if (d.is_proxy) document.getElementById('prev-proxy-badge').style.display = 'inline-flex';
+
+  // Cells
+  setEl('prev-ipv4', d.ipv4 || 'N/A');
+  if (!d.ipv6) document.getElementById('cell-ipv6').style.display = 'none';
+  else setEl('prev-ipv6', d.ipv6);
+  setEl('prev-ipver', d.ip_version || '—');
+  setEl('prev-isp', d.isp || '—');
+  setEl('prev-host', (d.hosting_icon || '') + ' ' + (d.hosting_provider || '—'));
+  setEl('prev-asn', d.asn || '—');
+  setEl('prev-tz', d.timezone || '—');
+  setEl('prev-ptr', d.ptr_record || 'None');
+
+  // SSL
+  const sslEl = document.getElementById('prev-ssl');
+  if (d.ssl_days_left !== null && d.ssl_days_left !== undefined) {
+    if (d.ssl_expired) {
+      sslEl.innerHTML = '<span style="color:#ef4444">Expired</span>';
+    } else if (d.ssl_days_left < 30) {
+      sslEl.innerHTML = `<span style="color:#f59e0b">${d.ssl_days_left} days left</span>`;
+    } else {
+      sslEl.innerHTML = `<span style="color:#10b981">Valid (${d.ssl_days_left}d)</span>`;
+    }
+    if (d.ssl_version) sslEl.textContent += ' · ' + d.ssl_version;
+  } else {
+    document.getElementById('cell-ssl').style.display = 'none';
+  }
+
+  // DNS A records
+  const dnsEl = document.getElementById('prev-dns-a');
+  if (d.dns_a && d.dns_a.length) {
+    dnsEl.textContent = d.dns_a.slice(0,4).join(' · ');
+  } else {
+    document.getElementById('dns-section').style.display = 'none';
+  }
+
+  preview.style.display  = 'block';
+  errorBox.style.display = 'none';
+  urlOk.style.display    = 'inline';
+}
+
+function lookupTarget(url) {
+  if (!url || url === lastUrl) return;
+  lastUrl = url;
+
+  spinner.style.display = 'inline';
+  urlOk.style.display   = 'none';
+  preview.style.display = 'none';
+  errorBox.style.display = 'none';
+  autoHint.textContent  = 'Analyzing target...';
+  autoHint.style.display = 'inline';
+
+  // Auto-fill scope
+  try {
+    const parsed = new URL(url.startsWith('http') ? url : 'http://' + url);
+    scopeInput.value = parsed.hostname;
+  } catch(e) {}
+
+  fetch('/api/ip-intel?url=' + encodeURIComponent(url), { credentials: 'same-origin' })
+    .then(r => r.json())
+    .then(d => {
+      spinner.style.display = 'none';
+      autoHint.style.display = 'none';
+      if (d.error || !d.primary_ip) {
+        document.getElementById('ip-error-msg').textContent = d.error || 'Could not resolve host. Check the URL.';
+        errorBox.style.display = 'flex';
+        urlOk.style.display = 'none';
+      } else {
+        showPreview(d);
+      }
+    })
+    .catch(() => {
+      spinner.style.display  = 'none';
+      autoHint.style.display = 'none';
+      errorBox.style.display = 'flex';
+    });
+}
+
+targetInput.addEventListener('input', function() {
+  clearTimeout(debounceTimer);
+  const val = this.value.trim();
+  if (val.length < 4) return;
+  debounceTimer = setTimeout(() => lookupTarget(val), 800);
+});
+
+// Trigger on paste immediately
+targetInput.addEventListener('paste', function() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => lookupTarget(this.value.trim()), 200);
+});
+
+// ── AUTO SCAN TRIGGER ─────────────────────────────────────────────────────────
+function triggerAutoScan(full) {
+  const url = targetInput.value.trim();
+  if (!url) return;
+
+  const btn = full
+    ? document.getElementById('auto-full-btn')
+    : document.getElementById('auto-quick-btn');
+  btn.disabled = true;
+  btn.textContent = 'Launching...';
+
+  fetch('/api/auto-scan', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      target_url: url,
+      full: full,
+      depth: full ? 5 : 2,
+      pages: full ? 200 : 50,
+    })
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.ok && d.redirect_url) {
+      window.location.href = d.redirect_url;
+    } else {
+      alert('Error: ' + (d.error || 'Unknown error'));
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    btn.disabled = false;
+    btn.textContent = full ? '🛡️ Full Audit Now' : '⚡ Quick Scan Now';
+  });
+}
+
+// ── SCAN FORM SUBMIT ──────────────────────────────────────────────────────────
+document.getElementById('scan-form').addEventListener('submit', function() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin">⚙️</span> Launching Scan...';
+});
+</script>
+{% endblock %}

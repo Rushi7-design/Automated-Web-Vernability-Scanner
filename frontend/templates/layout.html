@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Automated Web Vulnerability Scanner — Industry-Grade Security Research Tool">
+  <title>{% block title %}AWVS{% endblock %} | Automated Web Vulnerability Scanner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+<!-- ── FLASH MESSAGES ──────────────────────────────────────────────────────── -->
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash-msg {{ category }}">
+        {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="app-wrapper">
+
+  <!-- ── SIDEBAR ──────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="logo-icon">🔐</div>
+      <div class="brand-text">
+        <span class="brand-name">AWVS</span>
+        <span class="brand-sub">v4.0 · Vulnerability Scanner</span>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="{{ url_for('scan.dashboard') }}" class="nav-item {% if request.endpoint == 'scan.dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+      <a href="{{ url_for('scan.new_scan') }}" class="nav-item {% if request.endpoint == 'scan.new_scan' %}active{% endif %}">
+        <span class="nav-icon">🚀</span> New Scan
+      </a>
+      <a href="{{ url_for('scan.scan_list') }}" class="nav-item {% if request.endpoint == 'scan.scan_list' %}active{% endif %}">
+        <span class="nav-icon">📋</span> All Scans
+      </a>
+
+      {% if current_user.role == 'admin' %}
+      <div class="nav-section-label" style="margin-top:1rem;">Admin</div>
+      <a href="{{ url_for('admin.dashboard') }}" class="nav-item {% if request.endpoint == 'admin.dashboard' %}active{% endif %}">
+        <span class="nav-icon">🛡️</span> Admin Panel
+      </a>
+      <a href="{{ url_for('admin.db_viewer') }}" class="nav-item {% if request.endpoint == 'admin.db_viewer' %}active{% endif %}">
+        <span class="nav-icon">🗄️</span> DB Inspector
+      </a>
+      <a href="{{ url_for('admin.system_dashboard') }}" class="nav-item {% if request.endpoint == 'admin.system_dashboard' %}active{% endif %}">
+        <span class="nav-icon">⚙️</span> System Settings
+      </a>
+      {% endif %}
+
+      <div class="nav-section-label" style="margin-top:1rem;">Account</div>
+      <a href="{{ url_for('auth.profile') }}" class="nav-item {% if request.endpoint == 'auth.profile' %}active{% endif %}">
+        <span class="nav-icon">👤</span> Profile
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="nav-item" style="color:var(--text-muted);">
+        <span class="nav-icon">⏻</span> Log Out
+      </a>
+
+      <div class="nav-section-label" style="margin-top:1rem;">System</div>
+      <div class="nav-item" style="cursor:default; font-size:0.78rem; color:var(--text-muted); gap:0.5rem;">
+        <span class="nav-icon">🎓</span> Academic Research Tool
+      </div>
+      <div class="nav-item" style="cursor:default; font-size:0.78rem; color:var(--text-muted);">
+        <span class="nav-icon">⚙️</span> AWVS v4.0
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="{{ url_for('auth.profile') }}" style="display:flex;align-items:center;gap:0.75rem;flex:1;text-decoration:none;">
+        <div class="user-avatar">{{ current_user.username[0].upper() }}</div>
+        <div class="user-info">
+          <div class="user-name">{{ current_user.username }}</div>
+          <div class="user-role">{{ current_user.role | capitalize }}</div>
+        </div>
+      </a>
+      <a href="{{ url_for('auth.logout') }}" class="logout-btn" title="Log Out" data-tooltip="Log Out">⏻</a>
+    </div>
+  </aside>
+
+  <!-- ── MAIN CONTENT ──────────────────────────────────────────────────────── -->
+  <div class="main-content" style="position:relative; z-index:1;">
+    <div class="radial-glow-top"></div>
+    <div class="radial-glow-bottom"></div>
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <button id="menu-toggle" class="btn btn-ghost btn-sm" style="display:none;" aria-label="Toggle menu">☰</button>
+        <span class="topbar-title">{% block topbar_title %}Dashboard{% endblock %}</span>
+      </div>
+
+      <div class="topbar-actions">
+        <!-- Live clock -->
+        <span id="topbar-clock" style="font-size:0.78rem; color:var(--text-muted); font-family:var(--font-mono); letter-spacing:0.04em;"></span>
+
+        <!-- New Scan CTA -->
+        <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary btn-sm">＋ New Scan</a>
+
+        <!-- User avatar shortcut -->
+        <a href="{{ url_for('auth.profile') }}"
+           style="width:32px;height:32px;background:linear-gradient(135deg,var(--accent),var(--accent-light));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;color:white;text-decoration:none;flex-shrink:0;"
+           data-tooltip="{{ current_user.username }} ({{ current_user.role }})">
+          {{ current_user.username[0].upper() }}
+        </a>
+      </div>
+    </header>
+
+    <!-- PAGE CONTENT -->
+    <main class="page-content">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  awvs:
+    build: .
+    container_name: awvs_app
+    ports:
+      - "5000:5000"
+    environment:
+      - SECRET_KEY=change-this-production-secret
+      - DATABASE_URL=sqlite:///scanner.db
+      - DEBUG=False
+      - MAX_CRAWL_DEPTH=3
+      - MAX_CRAWL_PAGES=100
+    volumes:
+      - awvs_data:/app/reports
+      - awvs_db:/app/instance
+    restart: unless-stopped
+
+volumes:
+  awvs_data:
+  awvs_db:

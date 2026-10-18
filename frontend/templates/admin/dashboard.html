@@ -1,0 +1,307 @@
+{% extends "layout.html" %}
+{% block title %}Admin Panel{% endblock %}
+{% block topbar_title %}🛡️ Admin Panel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Admin Panel</h1>
+    <p class="page-subtitle">User management, analytics, and system-wide statistics</p>
+  </div>
+</div>
+
+<!-- ── PLATFORM STATS ────────────────────────────────────────────────────── -->
+<div class="stats-grid">
+  <div class="stat-card" style="border-color:rgba(99,102,241,0.3);">
+    <div class="stat-icon blue">👥</div>
+    <div><div class="stat-value">{{ total_users }}</div><div class="stat-label">Total Users</div></div>
+  </div>
+  <div class="stat-card" style="border-color:rgba(16,185,129,0.3);">
+    <div class="stat-icon green">✅</div>
+    <div><div class="stat-value" style="color:#10b981;">{{ active_users }}</div><div class="stat-label">Active Users</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon purple">🔍</div>
+    <div><div class="stat-value">{{ total_scans }}</div><div class="stat-label">Total Scans</div></div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon red">🐛</div>
+    <div><div class="stat-value">{{ total_vulns }}</div><div class="stat-label">Vulnerabilities</div></div>
+  </div>
+  <div class="stat-card" style="border-color:rgba(220,38,38,0.3);">
+    <div class="stat-icon red">💀</div>
+    <div><div class="stat-value" style="color:#dc2626;">{{ total_critical }}</div><div class="stat-label">Critical</div></div>
+  </div>
+  <div class="stat-card" style="border-color:rgba(239,68,68,0.3);">
+    <div class="stat-icon yellow">🔴</div>
+    <div><div class="stat-value" style="color:var(--high);">{{ total_high }}</div><div class="stat-label">High</div></div>
+  </div>
+</div>
+
+<!-- ── CHARTS + USER BREAKDOWN ───────────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
+
+  <!-- User Registration Timeline -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📈 New Registrations (7 Days)</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;align-items:center;">
+      <canvas id="regChart" style="max-height:200px;"></canvas>
+    </div>
+  </div>
+
+  <!-- Scan Activity -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">📊 Scan Activity (7 Days)</span></div>
+    <div class="card-body" style="display:flex;flex-direction:column;align-items:center;">
+      <canvas id="scanActivityChart" style="max-height:200px;"></canvas>
+    </div>
+  </div>
+
+  <!-- User Breakdown -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">🧑‍💻 User Breakdown</span></div>
+    <div class="card-body">
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">👑 Admins</span>
+          <span class="badge badge-high" style="font-size:0.85rem;font-weight:800;">{{ admin_count }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">🔬 Analysts</span>
+          <span class="badge badge-info" style="font-size:0.85rem;font-weight:800;">{{ analyst_count }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">✅ Active</span>
+          <span class="badge badge-completed" style="font-size:0.85rem;font-weight:800;">{{ active_users }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">🚫 Inactive</span>
+          <span class="badge badge-failed" style="font-size:0.85rem;font-weight:800;">{{ total_users - active_users }}</span>
+        </div>
+        <hr style="border-color:var(--border);margin:4px 0;">
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">✔️ Completed Scans</span>
+          <span style="font-weight:800;color:var(--text-primary);">{{ completed_scans }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">❌ Failed Scans</span>
+          <span style="font-weight:800;color:#ef4444;">{{ failed_scans }}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">🔄 Running Now</span>
+          <span style="font-weight:800;color:#f59e0b;">{{ running_scans|length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOP SCANNERS ──────────────────────────────────────────────────────── -->
+{% if top_scanners %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header"><span class="card-title">🏆 Top Scanners</span></div>
+  <div class="card-body" style="padding:0;">
+    <div style="display:flex;gap:0;flex-wrap:wrap;">
+      {% for ts in top_scanners %}
+      {% if ts.scan_count > 0 %}
+      <div style="flex:1;min-width:160px;padding:16px 20px;text-align:center;border-right:1px solid var(--border);">
+        <div style="width:48px;height:48px;background:linear-gradient(135deg,var(--accent),var(--accent-light));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:800;color:white;margin:0 auto 8px;">
+          {{ ts.user.username[0].upper() }}
+        </div>
+        <div style="font-weight:700;font-size:0.9rem;">{{ ts.user.username }}</div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">
+          <span style="color:#3b82f6;font-weight:700;">{{ ts.scan_count }}</span> scans ·
+          <span style="color:#ef4444;font-weight:700;">{{ ts.vuln_count }}</span> vulns
+        </div>
+      </div>
+      {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── LIVE RUNNING SCANS ────────────────────────────────────────────────── -->
+{% if running_scans %}
+<div class="card" style="margin-bottom:1.5rem;border-color:rgba(245,158,11,0.3);">
+  <div class="card-header" style="background:rgba(245,158,11,0.08);">
+    <span class="card-title">🔄 Live Running Scans ({{ running_scans|length }})</span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>#</th><th>Target</th><th>User</th><th>Started</th></tr></thead>
+      <tbody>
+        {% for scan in running_scans %}
+        <tr>
+          <td class="text-muted fs-xs">{{ scan.scan_id }}</td>
+          <td class="url-cell"><a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}">{{ scan.target_url }}</a></td>
+          <td class="text-muted fs-xs">{{ scan.owner.username if scan.owner else '—' }}</td>
+          <td class="text-muted fs-xs">{{ scan.start_time.strftime('%H:%M:%S') if scan.start_time else '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── USER MANAGEMENT ────────────────────────────────────────────────────── -->
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="card-header">
+    <span class="card-title">👥 User Management ({{ total_users }} users)</span>
+  </div>
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Username</th><th>Role</th><th>Status</th><th>Scans</th><th>Vulns Found</th><th>Last Login</th><th>Created</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        {% for us in user_stats %}
+        {% set user = us.user %}
+        <tr>
+          <td class="text-muted fs-xs">{{ user.user_id }}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              <div class="user-avatar" style="width:28px;height:28px;font-size:0.75rem;">{{ user.username[0].upper() }}</div>
+              <span>{{ user.username }}</span>
+              {% if user.user_id == current_user.user_id %}
+              <span class="badge badge-info" style="font-size:0.65rem;">You</span>
+              {% endif %}
+            </div>
+          </td>
+          <td>
+            <form method="POST" action="{{ url_for('admin.change_role', user_id=user.user_id) }}"
+                  style="display:flex;gap:0.4rem;align-items:center;">
+              <select name="role" class="form-control" style="padding:0.2rem 0.5rem;font-size:0.8rem;width:auto;">
+                <option value="analyst" {% if user.role=='analyst' %}selected{% endif %}>Analyst</option>
+                <option value="admin"   {% if user.role=='admin'   %}selected{% endif %}>Admin</option>
+              </select>
+              <button type="submit" class="btn btn-ghost btn-sm">Set</button>
+            </form>
+          </td>
+          <td>
+            <span class="badge {% if user.is_active %}badge-completed{% else %}badge-failed{% endif %}">
+              {{ 'Active' if user.is_active else 'Inactive' }}
+            </span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-weight:700;color:#3b82f6;">{{ us.scan_count }}</span>
+          </td>
+          <td style="text-align:center;">
+            <span style="font-weight:700;color:{% if us.vuln_count > 10 %}#ef4444{% elif us.vuln_count > 0 %}#f59e0b{% else %}var(--text-muted){% endif %};">{{ us.vuln_count }}</span>
+          </td>
+          <td class="text-muted fs-xs">{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else '—' }}</td>
+          <td class="text-muted fs-xs">{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '—' }}</td>
+          <td>
+            <div style="display:flex;gap:0.4rem;">
+              {% if user.user_id != current_user.user_id %}
+              <form method="POST" action="{{ url_for('admin.toggle_user', user_id=user.user_id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm">
+                  {{ '🔒 Deactivate' if user.is_active else '🔓 Activate' }}
+                </button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.delete_user', user_id=user.user_id) }}"
+                    onsubmit="return confirm('Delete user {{ user.username }}?');">
+                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+              </form>
+              {% else %}
+              <span class="text-muted fs-xs">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── ALL RECENT SCANS ──────────────────────────────────────────────────── -->
+<div class="card">
+  <div class="card-header"><span class="card-title">📋 All Recent Scans (System-Wide)</span></div>
+  {% if recent_scans %}
+  <div class="table-wrapper">
+    <table>
+      <thead><tr><th>#</th><th>Target</th><th>User</th><th>Status</th><th>Risk</th><th>Findings</th></tr></thead>
+      <tbody>
+        {% for scan in recent_scans %}
+        <tr>
+          <td class="text-muted fs-xs">{{ scan.scan_id }}</td>
+          <td class="url-cell">
+            <a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}">{{ scan.target_url }}</a>
+          </td>
+          <td class="text-muted fs-xs">{{ scan.owner.username if scan.owner else '—' }}</td>
+          <td><span class="badge badge-{{ scan.status }}">{{ scan.status | capitalize }}</span></td>
+          <td>
+            {% if scan.risk_score %}
+            <span class="fs-xs fw-600" style="color:{% if scan.risk_score >= 75 %}#ef4444{% elif scan.risk_score >= 50 %}#f59e0b{% else %}#3b82f6{% endif %};">
+              {{ "%.0f"|format(scan.risk_score) }}/100
+            </span>
+            {% else %}—{% endif %}
+          </td>
+          <td class="text-muted fs-xs">{{ scan.vuln_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><p class="text-muted">No scans yet.</p></div>
+  {% endif %}
+</div>
+
+<!-- ── CHARTS JS ──────────────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.borderColor = 'rgba(148,163,184,0.1)';
+Chart.defaults.font.family = "'Inter','Segoe UI',sans-serif";
+
+// Registration chart
+new Chart(document.getElementById('regChart'), {
+  type: 'bar',
+  data: {
+    labels: {{ reg_labels | tojson }},
+    datasets: [{
+      label: 'New Users',
+      data: {{ reg_counts | tojson }},
+      backgroundColor: 'rgba(99,102,241,.7)',
+      borderRadius: 6,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    }
+  }
+});
+
+// Scan activity chart
+new Chart(document.getElementById('scanActivityChart'), {
+  type: 'line',
+  data: {
+    labels: {{ scan_labels | tojson }},
+    datasets: [{
+      label: 'Scans',
+      data: {{ scan_counts | tojson }},
+      borderColor: '#10b981',
+      backgroundColor: 'rgba(16,185,129,.15)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointBackgroundColor: '#10b981',
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    }
+  }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,545 @@
+{% extends "layout.html" %}
+{% block title %}Scan #{{ scan.scan_id }} Report{% endblock %}
+{% block topbar_title %}📋 Scan #{{ scan.scan_id }} — {{ scan.target_url[:55] }}{% endblock %}
+
+{% block content %}
+
+<!-- ── PAGE HEADER ──────────────────────────────────────────────────────────── -->
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      Scan #{{ scan.scan_id }}
+      <span class="badge badge-{{ scan.status }}" id="scan-status-badge"
+            data-scan-id="{{ scan.scan_id }}" data-status="{{ scan.status }}"
+            style="font-size:0.75rem; vertical-align:middle; margin-left:0.5rem;">
+        {% if scan.status == 'running' %}<span class="pulse-dot" style="margin-right:4px;"></span>{% endif %}
+        {{ scan.status | capitalize }}
+      </span>
+    </h1>
+    <p class="page-subtitle"><span class="inline-code">{{ scan.target_url }}</span></p>
+  </div>
+
+  <div style="display:flex; gap:0.75rem; flex-wrap:wrap; align-items:flex-start;">
+    <div id="report-buttons" style="display:{% if scan.status == 'completed' %}flex{% else %}none{% endif %}; gap:0.5rem; flex-wrap:wrap;">
+      <a href="{{ url_for('report.download_report', scan_id=scan.scan_id, fmt='pdf') }}" class="btn btn-primary btn-sm">📄 PDF Report</a>
+      <a href="{{ url_for('report.download_report', scan_id=scan.scan_id, fmt='html') }}" class="btn btn-ghost btn-sm">🌐 HTML</a>
+      <a href="{{ url_for('export.export_json', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">{ } JSON</a>
+      <a href="{{ url_for('export.export_csv', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">📊 CSV</a>
+      <a href="{{ url_for('export.export_xml', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">📋 XML</a>
+    </div>
+    <a href="{{ url_for('scan.scan_list') }}" class="btn btn-ghost btn-sm">← All Scans</a>
+  </div>
+</div>
+
+<!-- ── LIVE PROGRESS (running scans) ─────────────────────────────────────────── -->
+{% if scan.status in ['running', 'pending', 'starting'] %}
+<div class="card" style="margin-bottom:1.25rem; border-color:rgba(99,102,241,0.3);" id="progress-card">
+  <div class="card-header">
+    <span class="card-title"><span class="pulse-dot" style="margin-right:6px;"></span> Scan in Progress</span>
+    <span class="fs-xs text-muted" id="elapsed-timer">Elapsed: 0s</span>
+  </div>
+  <div class="card-body">
+    <div class="progress-wrapper">
+      <div class="progress-label">
+        <span id="phase-label">Initializing...</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <div class="log-terminal" id="log-terminal">
+      <div class="log-line info">[AWVS] Connecting to scan stream...</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── RISK SCORE BANNER ──────────────────────────────────────────────────────── -->
+{% if scan.status == 'completed' and scan.risk_score is not none %}
+{% set rc = 'rgba(239,68,68,' if scan.risk_score >= 75 else ('rgba(245,158,11,' if scan.risk_score >= 50 else ('rgba(59,130,246,' if scan.risk_score >= 25 else 'rgba(16,185,129,')) %}
+{% set fc = '#ef4444' if scan.risk_score >= 75 else ('#f59e0b' if scan.risk_score >= 50 else ('#3b82f6' if scan.risk_score >= 25 else '#10b981')) %}
+<div class="card" style="margin-bottom:1.25rem; border-color:{{ rc }}0.4); background:{{ rc }}0.04);">
+  <div class="card-body" style="display:flex; align-items:center; gap:2rem; flex-wrap:wrap; padding:1.25rem 1.5rem;">
+    <div style="text-align:center; min-width:80px;">
+      <div style="font-size:2.8rem; font-weight:900; color:{{ fc }}; line-height:1; letter-spacing:-0.04em;">{{ "%.0f"|format(scan.risk_score) }}</div>
+      <div class="fs-xs text-muted" style="text-transform:uppercase; letter-spacing:0.08em; margin-top:0.2rem;">Risk Score</div>
+    </div>
+    <div style="flex:1; min-width:200px;">
+      <div class="progress-bar-bg" style="height:10px; margin-bottom:0.4rem;">
+        <div class="progress-bar-fill" style="width:{{ scan.risk_score }}%; background:{{ fc }};"></div>
+      </div>
+      <p class="fs-xs text-muted">{{ scan.risk_level or 'Unknown' }} Risk — {{ "%.1f"|format(scan.risk_score) }}/100</p>
+    </div>
+    <div style="display:flex; gap:1.5rem; flex-wrap:wrap;">
+      {% set counts = {'Critical':0,'High':0,'Medium':0,'Low':0,'Info':0} %}
+      {% for v in scan.vulnerabilities %}{% if not v.false_positive %}{% if counts.update({v.severity: counts[v.severity]+1}) %}{% endif %}{% endif %}{% endfor %}
+      {% for sev, col in [('Critical','var(--critical-light)'),('High','var(--high-light)'),('Medium','var(--medium-light)'),('Low','var(--low-light)'),('Info','var(--info-light)')] %}
+      <div style="text-align:center;">
+        <div style="font-size:1.5rem; font-weight:800; color:{{ col }};">{{ counts[sev] }}</div>
+        <div class="fs-xs text-muted" style="text-transform:uppercase; letter-spacing:0.06em;">{{ sev }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div style="display:grid; grid-template-columns:1fr 320px; gap:1.5rem; align-items:start;">
+
+  <!-- ── LEFT COLUMN ────────────────────────────────────────────────────────── -->
+  <div>
+
+    <!-- IP INTELLIGENCE ──────────────────────────────────────────────────────── -->
+    {% if scan.ip_address or scan.hosting_country %}
+    <div class="card" style="margin-bottom:1.25rem; border-color:rgba(6,182,212,0.25);">
+      <div class="card-header" style="background:rgba(6,182,212,0.04);">
+        <span class="card-title">🌐 IP Intelligence</span>
+        <span class="badge" style="background:rgba(6,182,212,0.1);color:#22d3ee;border-color:rgba(6,182,212,0.3);">Phase 0</span>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px,1fr));">
+        {% macro ip_cell(label, val) %}
+        <div style="padding:0.7rem 1.1rem; border-right:1px solid var(--border); border-bottom:1px solid var(--border);">
+          <div style="font-size:0.65rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.25rem;">{{ label }}</div>
+          <div style="font-size:0.85rem; font-weight:600; color:var(--text-primary);">{{ val or '—' }}</div>
+        </div>
+        {% endmacro %}
+        {{ ip_cell('IP Address', scan.ip_address) }}
+        {{ ip_cell('IP Version', scan.ip_version) }}
+        {{ ip_cell('Location', scan.hosting_country) }}
+        {{ ip_cell('ISP', scan.hosting_isp) }}
+        {{ ip_cell('Hosting Provider', scan.hosting_org) }}
+        {{ ip_cell('ASN', scan.asn) }}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- VULNERABILITIES ─────────────────────────────────────────────────────── -->
+    {% set vulns = scan.vulnerabilities | selectattr('false_positive', 'false') | list %}
+    <div class="card" style="margin-bottom:1.25rem;">
+      <div class="card-header">
+        <span class="card-title">🔍 Vulnerabilities Found ({{ vulns | length }})</span>
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          {% for sev in ['critical','high','medium','low','info'] %}
+          {% set cnt = vulns | selectattr('severity','equalto',sev|capitalize) | list | length %}
+          {% if cnt %}<span class="badge badge-{{ sev }}">{{ cnt }} {{ sev | capitalize }}</span>{% endif %}
+          {% endfor %}
+        </div>
+      </div>
+      <div style="padding:0.75rem;">
+
+        {% if vulns %}
+          {% for sev_label, sev_key in [('Critical','critical'),('High','high'),('Medium','medium'),('Low','low'),('Info','info')] %}
+          {% set group = vulns | selectattr('severity','equalto',sev_label) | list %}
+          {% if group %}
+          <div style="margin-bottom:0.4rem;">
+            <div style="font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text-muted); padding:0.4rem 0.5rem;">
+              {{ sev_label }} Severity ({{ group | length }})
+            </div>
+            {% for vuln in group %}
+            <!-- VULNERABILITY CARD ──────────────────────────────────────────── -->
+            <div class="vuln-card {{ vuln.severity | lower }}" id="vuln-{{ vuln.vuln_id }}">
+              <div class="vuln-header">
+                <span class="badge badge-{{ vuln.severity | lower }}">{{ vuln.severity }}</span>
+                {% if vuln.cvss_score %}
+                <span style="font-family:var(--font-mono); font-size:0.72rem; background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:4px; padding:0.12rem 0.4rem; color:{% if vuln.cvss_score >= 9 %}#f87171{% elif vuln.cvss_score >= 7 %}#fb923c{% elif vuln.cvss_score >= 4 %}#fbbf24{% else %}#60a5fa{% endif %}; font-weight:700;">
+                  CVSS {{ "%.1f"|format(vuln.cvss_score) }}
+                </span>
+                {% endif %}
+                <span class="vuln-title">{{ vuln.vuln_type }}</span>
+                {% if vuln.cwe_id %}<span class="inline-code" style="font-size:0.7rem; flex-shrink:0;">{{ vuln.cwe_id }}</span>{% endif %}
+                <span class="vuln-chevron">▼</span>
+              </div>
+
+              <!-- EXPANDED BODY ─────────────────────────────────────────────── -->
+              <div class="vuln-body">
+
+                <!-- Evidence -->
+                {% if vuln.url or vuln.parameter or vuln.evidence %}
+                <div style="background:rgba(0,0,0,0.2); border:1px solid var(--border); border-radius:6px; padding:0.85rem 1rem; margin-bottom:1rem;">
+                  <div style="font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.5rem;">Evidence</div>
+                  <div style="display:grid; grid-template-columns:auto 1fr; gap:0.35rem 1rem; font-size:0.82rem;">
+                    {% if vuln.url %}
+                    <span style="color:var(--text-muted); font-weight:600;">URL</span>
+                    <span class="inline-code" style="word-break:break-all; font-size:0.75rem;" data-copy="{{ vuln.url }}">{{ vuln.url }}</span>
+                    {% endif %}
+                    {% if vuln.parameter %}
+                    <span style="color:var(--text-muted); font-weight:600;">Parameter</span>
+                    <span class="inline-code">{{ vuln.parameter }}</span>
+                    {% endif %}
+                    {% if vuln.payload %}
+                    <span style="color:var(--text-muted); font-weight:600;">Payload</span>
+                    <span class="inline-code" style="color:#f87171;">{{ vuln.payload }}</span>
+                    {% endif %}
+                    {% if vuln.evidence %}
+                    <span style="color:var(--text-muted); font-weight:600; padding-top:0.2rem;">Detail</span>
+                    <span style="color:var(--text-secondary); line-height:1.5;">{{ vuln.evidence }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endif %}
+
+                <!-- Remediation Section ──────────────────────────────────────── -->
+                {% if vuln.remediation_data %}
+                {% set r = vuln.remediation_data %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">
+
+                  <!-- What it is -->
+                  <div>
+                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#60a5fa; margin-bottom:0.5rem;">📖 Description</div>
+                    <p style="font-size:0.83rem; color:var(--text-secondary); line-height:1.6;">{{ r.description }}</p>
+                  </div>
+
+                  <!-- Impact -->
+                  <div>
+                    <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#f87171; margin-bottom:0.5rem;">💥 Business Impact</div>
+                    <pre style="font-size:0.78rem; color:var(--text-secondary); white-space:pre-wrap; font-family:var(--font-main); line-height:1.6; margin:0;">{{ r.impact }}</pre>
+                  </div>
+                </div>
+
+                <!-- Fix Steps -->
+                <div style="background:rgba(16,185,129,0.06); border:1px solid rgba(16,185,129,0.2); border-radius:6px; padding:0.85rem 1rem; margin-bottom:1rem;">
+                  <div style="font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; color:#34d399; margin-bottom:0.6rem;">🔧 How to Fix — Step by Step</div>
+                  {% for step in r.fix_steps %}
+                  <div style="font-size:0.83rem; color:var(--text-primary); padding:0.25rem 0; display:flex; gap:0.6rem; align-items:flex-start; {% if not loop.last %}border-bottom:1px solid rgba(16,185,129,0.1); padding-bottom:0.35rem; margin-bottom:0.1rem;{% endif %}">
+                    <span style="color:#34d399; font-weight:700; flex-shrink:0;">{{ loop.index }}</span>
+                    <span>{{ step.lstrip('0123456789. ') }}</span>
+                  </div>
+                  {% endfor %}
+                </div>
+
+                <!-- Code Examples -->
+                {% if r.code_vulnerable or r.code_fixed %}
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; margin-bottom:1rem;">
+                  {% if r.code_vulnerable %}
+                  <div>
+                    <div style="font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:#f87171; margin-bottom:0.3rem; text-transform:uppercase;">❌ Vulnerable Code</div>
+                    <pre style="background:#0a0a0f; border:1px solid rgba(239,68,68,0.25); border-radius:6px; padding:0.75rem; font-family:var(--font-mono); font-size:0.72rem; color:#fca5a5; overflow-x:auto; white-space:pre-wrap; line-height:1.55; margin:0;">{{ r.code_vulnerable }}</pre>
+                  </div>
+                  {% endif %}
+                  {% if r.code_fixed %}
+                  <div>
+                    <div style="font-size:0.68rem; font-weight:700; letter-spacing:0.06em; color:#34d399; margin-bottom:0.3rem; text-transform:uppercase;">✅ Fixed Code</div>
+                    <pre style="background:#020d06; border:1px solid rgba(16,185,129,0.25); border-radius:6px; padding:0.75rem; font-family:var(--font-mono); font-size:0.72rem; color:#6ee7b7; overflow-x:auto; white-space:pre-wrap; line-height:1.55; margin:0;">{{ r.code_fixed }}</pre>
+                  </div>
+                  {% endif %}
+                </div>
+                {% endif %}
+
+                <!-- References -->
+                {% if r.references %}
+                <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                  <span style="font-size:0.7rem; color:var(--text-muted); font-weight:600;">📚 References:</span>
+                  {% for label, url in r.references %}
+                  <a href="{{ url }}" target="_blank" rel="noopener"
+                     style="font-size:0.72rem; background:rgba(59,130,246,0.08); border:1px solid rgba(59,130,246,0.2); border-radius:4px; padding:0.15rem 0.5rem; color:var(--accent-light); white-space:nowrap;">
+                    🔗 {{ label }}
+                  </a>
+                  {% endfor %}
+                </div>
+                {% endif %}
+
+                {% endif %}{# end remediation_data #}
+
+                <!-- Notes / False Positive -->
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-top:1rem; padding-top:0.75rem; border-top:1px solid var(--border); flex-wrap:wrap; gap:0.5rem;">
+                  <form method="POST" action="{{ url_for('scan.toggle_false_positive', vuln_id=vuln.vuln_id) }}" style="display:inline;">
+                    <button type="submit" class="btn btn-ghost btn-sm">
+                      {% if vuln.false_positive %}✅ Mark Real{% else %}🚫 Mark False Positive{% endif %}
+                    </button>
+                  </form>
+                  <div style="font-size:0.72rem; color:var(--text-muted);">
+                    OWASP: {% if vuln.remediation_data %}{{ vuln.remediation_data.owasp }}{% else %}—{% endif %}
+                    &nbsp;|&nbsp;
+                    CWE: {{ vuln.cwe_id or '—' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+          {% endfor %}
+
+        {% else %}
+          <div class="empty-state">
+            <div class="empty-icon">✅</div>
+            <h3>No Vulnerabilities Found</h3>
+            <p>Scan completed with no vulnerabilities detected. This is a great result!</p>
+          </div>
+        {% endif %}
+
+        <!-- FALSE POSITIVES -->
+        {% set fps = scan.vulnerabilities | selectattr('false_positive') | list %}
+        {% if fps %}
+        <details style="margin-top:1rem;">
+          <summary style="cursor:pointer; font-size:0.8rem; color:var(--text-muted); padding:0.5rem;">{{ fps|length }} False Positives (hidden)</summary>
+          {% for vuln in fps %}
+          <div class="vuln-card" style="opacity:0.45; margin-top:0.4rem;">
+            <div class="vuln-header" style="cursor:default;">
+              <span class="badge" style="background:rgba(100,100,100,0.1);color:#888;border-color:#333;">FP</span>
+              <span class="vuln-title" style="text-decoration:line-through;">{{ vuln.vuln_type }}</span>
+              <form method="POST" action="{{ url_for('scan.toggle_false_positive', vuln_id=vuln.vuln_id) }}">
+                <button type="submit" class="btn btn-ghost btn-sm">Restore</button>
+              </form>
+            </div>
+          </div>
+          {% endfor %}
+        </details>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>{# end left column #}
+
+  <!-- ── RIGHT SIDEBAR ──────────────────────────────────────────────────────── -->
+  <div>
+
+    <!-- Scan Metadata -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">📋 Scan Details</span></div>
+      <div class="card-body" style="padding:0.75rem 1rem;">
+        {% macro detail_row(label, val) %}
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:0.4rem 0; border-bottom:1px solid rgba(30,45,69,0.5); font-size:0.82rem; gap:0.5rem; flex-wrap:wrap;">
+          <span style="color:var(--text-muted); font-weight:600; font-size:0.73rem; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap;">{{ label }}</span>
+          <span style="color:var(--text-secondary); text-align:right; word-break:break-all;">{{ val or '—' }}</span>
+        </div>
+        {% endmacro %}
+        {{ detail_row('Target', scan.target_url[:45] + ('...' if scan.target_url|length > 45 else '')) }}
+        {{ detail_row('Status', scan.status | capitalize) }}
+        {{ detail_row('Started', scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else 'N/A') }}
+        {{ detail_row('Completed', scan.end_time.strftime('%Y-%m-%d %H:%M') if scan.end_time else 'N/A') }}
+        {% if scan.duration_seconds %}
+        {{ detail_row('Duration', (scan.duration_seconds // 60)|string + 'm ' + (scan.duration_seconds % 60)|string + 's') }}
+        {% endif %}
+        {{ detail_row('Pages Crawled', scan.crawled_pages | length) }}
+        {{ detail_row('Total Findings', scan.vulnerabilities | length) }}
+        {{ detail_row('Scanned by', scan.owner.username) }}
+      </div>
+    </div>
+
+    <!-- Modules Enabled -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">⚙️ Modules</span></div>
+      <div class="card-body" style="padding:0.5rem 0.75rem; display:flex; flex-wrap:wrap; gap:0.4rem;">
+        {% for label, val in [('Recon', scan.enable_recon),('XSS', scan.check_xss),
+                               ('SQLi', scan.check_sqli),('CSRF', scan.check_csrf),
+                               ('Headers', scan.check_headers),('Redirect', scan.check_redirect),
+                               ('Advanced', scan.check_advanced)] %}
+        <span class="badge {% if val %}badge-completed{% else %}badge-failed{% endif %}">
+          {{ '✓' if val else '✗' }} {{ label }}
+        </span>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Recon Results -->
+    {% if scan.recon_results %}
+    {% set recon = scan.recon_results[0] %}
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">🔭 Recon Results</span></div>
+      <div class="card-body" style="padding:0.75rem 1rem; font-size:0.82rem;">
+        {% if recon.server_banner %}
+        <div style="margin-bottom:0.5rem;"><span style="color:var(--text-muted); font-weight:600;">Server:</span> <span class="inline-code">{{ recon.server_banner }}</span></div>
+        {% endif %}
+        {% if recon.detected_tech %}
+        <div style="margin-bottom:0.5rem;">
+          <span style="color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.3rem;">Technologies:</span>
+          {% for tech in recon.detected_tech | from_json %}
+          <span class="badge badge-info" style="margin:0.15rem;">{{ tech }}</span>
+          {% endfor %}
+        </div>
+        {% endif %}
+         {% if recon.open_ports %}
+         <div>
+           <span style="color:var(--text-muted); font-weight:600; display:block; margin-bottom:0.4rem;">Open Ports (Nmap Service Audit):</span>
+           <table style="width:100%; font-size:0.8rem; border-collapse:collapse; background:rgba(0,0,0,0.12); border-radius:6px; overflow:hidden;">
+             <thead>
+               <tr style="border-bottom:1px solid var(--border); background:rgba(255,255,255,0.02); text-align:left;">
+                 <th style="padding:0.5rem 0.75rem; color:var(--text-muted); font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Port</th>
+                 <th style="padding:0.5rem 0.75rem; color:var(--text-muted); font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Service</th>
+                 <th style="padding:0.5rem 0.75rem; color:var(--text-muted); font-weight:700; font-size:0.75rem; text-transform:uppercase; letter-spacing:0.04em;">Banner</th>
+               </tr>
+             </thead>
+             <tbody>
+               {% for p in recon.open_ports | from_json %}
+               <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                 <td style="padding:0.5rem 0.75rem; font-family:var(--font-mono); font-weight:800; color:var(--accent-light);">
+                   {{ p.port if p is mapping else p }}/tcp
+                 </td>
+                 <td style="padding:0.5rem 0.75rem;">
+                   <span class="badge badge-info" style="font-size:0.7rem; font-weight:800;">
+                     {{ (p.service if p is mapping else 'unknown') | upper }}
+                   </span>
+                 </td>
+                 <td style="padding:0.5rem 0.75rem; font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary); max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                   {{ p.banner if (p is mapping and p.banner) else '—' }}
+                 </td>
+               </tr>
+               {% endfor %}
+             </tbody>
+           </table>
+         </div>
+         {% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Analyst Notes -->
+    <div class="card" style="margin-bottom:1rem;">
+      <div class="card-header"><span class="card-title">📝 Analyst Notes</span></div>
+      <div class="card-body" style="padding:0.75rem 1rem;">
+        {% if scan.notes %}
+          {% for note in scan.notes %}
+          <div style="padding:0.5rem 0.75rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:6px; margin-bottom:0.4rem; font-size:0.82rem;">
+            <div style="color:var(--text-secondary);">{{ note.content }}</div>
+            <div class="fs-xs text-muted" style="margin-top:0.25rem;">{{ note.created_at.strftime('%b %d, %H:%M') if note.created_at else '' }}</div>
+          </div>
+          {% endfor %}
+        {% endif %}
+        <form id="note-form" style="margin-top:0.5rem;">
+          <textarea id="note-content" class="form-control" rows="2" placeholder="Add analyst note..."></textarea>
+          <button type="button" onclick="addNote()" class="btn btn-ghost btn-sm" style="margin-top:0.4rem; width:100%;">+ Add Note</button>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── LIVE SCAN STREAM ──────────────────────────────────────────────────────────
+const scanStatus = "{{ scan.status }}";
+const scanId     = "{{ scan.scan_id }}";
+
+if (['running','pending','starting'].includes(scanStatus)) {
+  const logEl    = document.getElementById('log-terminal');
+  const fillEl   = document.getElementById('progress-fill');
+  const pctEl    = document.getElementById('progress-pct');
+  const phaseEl  = document.getElementById('phase-label');
+  const timerEl  = document.getElementById('elapsed-timer');
+
+  let startTime = Date.now();
+  const tickTimer = setInterval(() => {
+    const s = Math.floor((Date.now() - startTime) / 1000);
+    timerEl.textContent = `Elapsed: ${Math.floor(s/60)}m ${s%60}s`;
+  }, 1000);
+
+  const PHASES = {
+    '0': ['IP Intelligence',  5],
+    '1': ['Reconnaissance',  15],
+    '2': ['BFS Crawl',       45],
+    '3': ['Core Engine',     75],
+    '4': ['Advanced Checks', 90],
+    '5': ['Reporting',       98],
+  };
+
+  let sseConnected = false;
+  let sseFallbackTimer = setTimeout(() => {
+    if (!sseConnected) {
+      console.log("[*] Waitress buffering detected. Switching to HTTP Polling fallback...");
+      evtSource.close();
+      startPollingFallback();
+    }
+  }, 2500);
+
+  const evtSource = new EventSource(`/api/scan/${scanId}/stream`);
+
+  function appendLog(log) {
+    if (!log) return;
+    const cls  = log.includes('[WARN]') || log.includes('WARN') ? 'warn'
+               : log.includes('[ERR]')  || log.includes('Error') ? 'error'
+               : log.includes('[OK]')   || log.includes('complete') || log.includes('✔') ? 'ok'
+               : log.includes('Phase')  ? 'info' : '';
+
+    const div = document.createElement('div');
+    div.className = `log-line ${cls}`;
+    div.textContent = log;
+    logEl.appendChild(div);
+    logEl.scrollTop = logEl.scrollHeight;
+
+    // Detect phase label from log
+    for (const [num, [name, val]] of Object.entries(PHASES)) {
+      if (log.includes(`Phase ${num}`) || log.includes(name)) {
+        phaseEl.textContent = `Phase ${num}: ${name}`;
+        fillEl.style.width = val + '%';
+        pctEl.textContent  = val + '%';
+      }
+    }
+  }
+
+  evtSource.onmessage = function(e) {
+    try {
+      sseConnected = true;
+      clearTimeout(sseFallbackTimer);
+      const msg = JSON.parse(e.data);
+
+      if (msg.done || msg.status === 'completed' || msg.status === 'failed') {
+        evtSource.close();
+        clearInterval(tickTimer);
+        document.getElementById('progress-card')?.remove();
+        window.location.reload();
+        return;
+      }
+
+      appendLog(msg.log);
+    } catch(e) {}
+  };
+
+  evtSource.onerror = function() {
+    evtSource.close();
+    clearTimeout(sseFallbackTimer);
+    if (!sseConnected) {
+      startPollingFallback();
+    } else {
+      clearInterval(tickTimer);
+      setTimeout(() => window.location.reload(), 2000);
+    }
+  };
+
+  function startPollingFallback() {
+    console.log("[*] Polling loop active.");
+    let displayedLines = 0;
+    const pollInterval = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/scan/${scanId}/status`);
+        if (!r.ok) return;
+        const d = await r.json();
+        
+        // Print new log lines
+        const logList = d.log || [];
+        if (logList.length > displayedLines) {
+          for (let i = displayedLines; i < logList.length; i++) {
+            appendLog(logList[i]);
+          }
+          displayedLines = logList.length;
+        }
+
+        if (d.status === 'completed' || d.status === 'failed') {
+          clearInterval(pollInterval);
+          clearInterval(tickTimer);
+          document.getElementById('progress-card')?.remove();
+          window.location.reload();
+        }
+      } catch (err) {
+        console.error("Polling error: ", err);
+      }
+    }, 1500);
+  }
+}
+
+// ── ADD ANALYST NOTE ──────────────────────────────────────────────────────────
+async function addNote() {
+  const content = document.getElementById('note-content').value.trim();
+  if (!content) return;
+  const resp = await fetch(`/api/scan/${scanId}/note`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ content }),
+  });
+  if (resp.ok) window.location.reload();
+}
+</script>
+{% endblock %}

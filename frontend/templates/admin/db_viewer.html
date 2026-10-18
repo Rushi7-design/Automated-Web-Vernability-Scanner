@@ -1,0 +1,150 @@
+{% extends "layout.html" %}
+{% block title %}Database Viewer{% endblock %}
+{% block topbar_title %}🗄️ Database Inspector{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">Database Inspector</h1>
+    <p class="page-subtitle">Raw MongoDB collections explorer and document debugger</p>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 240px 1fr; gap:1.5rem; align-items:start;">
+  
+  <!-- Left Side: Collections List -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">Collections</span></div>
+    <div class="card-body" style="padding:0.75rem;">
+      <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        {% for col in collections %}
+        <a href="?col={{ col.name }}" 
+           style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-radius:8px; text-decoration:none; font-size:0.85rem; font-weight:700; transition:all 0.2s;
+                  {% if active_col == col.name %}
+                    background:var(--accent-subtle); border:1px solid var(--accent); color:var(--accent-light);
+                  {% else %}
+                    background:var(--bg-primary); border:1px solid var(--border); color:var(--text-secondary);
+                  {% endif %}"
+           onmouseover="if(this.style.color!=='var(--accent-light)') this.style.borderColor='var(--border-light)';" 
+           onmouseout="if(this.style.color!=='var(--accent-light)') this.style.borderColor='var(--border)';">
+          <span>📁 {{ col.name | capitalize }}</span>
+          <span class="badge badge-info" style="font-size:0.7rem;">{{ col.count }}</span>
+        </a>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Side: Document Table -->
+  <div class="card">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="card-title">Collection: <code>{{ active_col }}</code></span>
+      <span style="font-size:0.75rem; color:var(--text-muted);">Showing last {{ documents | length }} documents</span>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if documents %}
+      <div style="overflow-x:auto;">
+        <table class="table" style="margin-bottom:0;">
+          <thead>
+            <tr>
+              <th style="width:220px; font-family:var(--font-mono); font-size:0.75rem;">Object ID</th>
+              <th>Identifying Field</th>
+              <th style="width:180px;">Created/Started At</th>
+              <th style="width:100px; text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in documents %}
+            <tr>
+              <td style="font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);">
+                {{ doc._id }}
+              </td>
+              <td>
+                {% if active_col == 'users' %}
+                  <strong style="color:var(--text-primary);">{{ doc.username }}</strong> 
+                  <span class="badge badge-info" style="margin-left:6px;">{{ doc.role }}</span>
+                {% elif active_col == 'scans' %}
+                  <span style="color:var(--accent-light); font-weight:700; font-family:var(--font-mono); font-size:0.8rem;">
+                    {{ doc.target_url }}
+                  </span>
+                  {% if doc.status == 'completed' %}
+                    <span class="badge badge-success" style="margin-left:6px;">Completed</span>
+                  {% elif doc.status == 'running' %}
+                    <span class="badge badge-high" style="margin-left:6px;">Running</span>
+                  {% else %}
+                    <span class="badge badge-info" style="margin-left:6px;">{{ doc.status | capitalize }}</span>
+                  {% endif %}
+                {% else %}
+                  {{ doc | string | truncate(80) }}
+                {% endif %}
+              </td>
+              <td style="font-size:0.8rem; color:var(--text-muted);">
+                {% if active_col == 'users' %}
+                  {{ doc.created_at.strftime('%Y-%m-%d %H:%M:%S') if doc.created_at else 'N/A' }}
+                {% elif active_col == 'scans' %}
+                  {{ doc.created_at.strftime('%Y-%m-%d %H:%M:%S') if doc.created_at else 'N/A' }}
+                {% endif %}
+              </td>
+              <td style="text-align:right;">
+                <button onclick="viewRawDocument('{{ doc._id }}')" 
+                        class="btn btn-ghost" 
+                        style="padding:4px 8px; font-size:0.75rem;">🔍 View JSON</button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div style="padding:3rem; text-align:center; color:var(--text-muted);">
+        <div style="font-size:2rem; margin-bottom:0.5rem;">🕳️</div>
+        <div>No documents found in this collection.</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Raw Document View Modal -->
+<div id="raw-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center;">
+  <div class="card" style="width:90%; max-width:800px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 0 30px var(--accent-glow); border-color:var(--accent);">
+    <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+      <span class="card-title" id="modal-title">Raw Document: 6a...</span>
+      <button onclick="closeModal()" 
+              style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:1.2rem; font-weight:bold;">✕</button>
+    </div>
+    <div class="card-body" style="overflow-y:auto; padding:1.25rem; background:#040705;">
+      <pre id="modal-code" style="margin:0; font-family:var(--font-mono); font-size:0.8rem; line-height:1.4; color:#6ee7b7; overflow-x:auto;"></pre>
+    </div>
+    <div class="card-footer" style="display:flex; justify-content:flex-end; gap:0.5rem; background:var(--bg-secondary); border-top:1px solid var(--border);">
+      <button onclick="closeModal()" class="btn btn-primary" style="padding:6px 16px; font-size:0.8rem;">Close Inspector</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function viewRawDocument(docId) {
+    const colName = "{{ active_col }}";
+    fetch(`/admin/db-viewer/doc?col=${colName}&id=${docId}`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('modal-title').textContent = `📄 Document ID: ${docId} (Collection: ${colName})`;
+      document.getElementById('modal-code').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('raw-modal').style.display = 'flex';
+    })
+    .catch(err => {
+      alert("Error fetching document data: " + err.message);
+    });
+  }
+
+  function closeModal() {
+    document.getElementById('raw-modal').style.display = 'none';
+  }
+
+  // Escape key closes modal
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape') closeModal();
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Automated Web Vulnerability Scanner</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="flash-msg {{ category }}">
+        {% if category == 'success' %}✅{% elif category == 'error' %}❌{% elif category == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+        {{ message }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<div class="auth-wrapper">
+  <div class="auth-card glass-panel">
+    <div class="auth-logo">
+      <div class="logo-circle">🔐</div>
+      <h1>Welcome back</h1>
+      <p>Automated Web Vulnerability Scanner</p>
+    </div>
+
+    <form method="POST" action="{{ url_for('auth.login') }}">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input type="text" id="username" name="username" class="form-control"
+               placeholder="Enter your username" required autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input type="password" id="password" name="password" class="form-control"
+               placeholder="Enter your password" required autocomplete="current-password">
+      </div>
+
+      <div class="form-group" style="display:flex; align-items:center; gap:0.5rem;">
+        <input type="checkbox" id="remember" name="remember" style="accent-color:var(--accent);">
+        <label for="remember" style="font-size:0.85rem; color:var(--text-secondary); cursor:pointer;">
+          Remember me
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-lg" style="width:100%; margin-top:0.5rem;">
+        🔓 Sign In
+      </button>
+    </form>
+
+    <div class="divider"></div>
+
+    <p style="text-align:center; font-size:0.85rem; color:var(--text-muted);">
+      Don't have an account?
+      <a href="{{ url_for('auth.register') }}" style="color:var(--accent);">Create one</a>
+    </p>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

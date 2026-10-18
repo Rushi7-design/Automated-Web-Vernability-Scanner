@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+{% block title %}All Scans{% endblock %}
+{% block topbar_title %}📋 All Scans{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1 class="page-title">All Scans</h1>
+    <p class="page-subtitle">Complete history of your vulnerability scans</p>
+  </div>
+  <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">🚀 New Scan</a>
+</div>
+
+<div class="card">
+  {% if scans %}
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Target URL</th>
+          <th>Status</th>
+          <th>Findings</th>
+          <th>Pages</th>
+          <th>Started</th>
+          <th>Duration</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for scan in scans %}
+        <tr>
+          <td class="text-muted fs-xs">{{ scan.scan_id }}</td>
+          <td>
+            <a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}"
+               class="url-cell" style="display:block;">{{ scan.target_url }}</a>
+          </td>
+          <td>
+            <span class="badge badge-{{ scan.status }}">
+              {% if scan.status == 'running' %}<span class="pulse-dot" style="margin-right:4px;"></span>{% endif %}
+              {{ scan.status | capitalize }}
+            </span>
+          </td>
+          <td>
+            {% if scan.vuln_count > 0 %}
+            <div class="severity-mini-grid">
+              {% if scan.high_count > 0 %}<span class="sev-pill high">H {{ scan.high_count }}</span>{% endif %}
+              {% if scan.medium_count > 0 %}<span class="sev-pill medium">M {{ scan.medium_count }}</span>{% endif %}
+              {% if scan.low_count > 0 %}<span class="sev-pill low">L {{ scan.low_count }}</span>{% endif %}
+              {% if scan.info_count > 0 %}<span class="sev-pill info">I {{ scan.info_count }}</span>{% endif %}
+            </div>
+            {% else %}
+              <span class="text-muted fs-xs">{{ '0' if scan.status == 'completed' else '—' }}</span>
+            {% endif %}
+          </td>
+          <td class="text-muted fs-xs">{{ scan.crawled_pages | length }}</td>
+          <td class="text-muted fs-xs">{{ scan.start_time.strftime('%Y-%m-%d %H:%M') if scan.start_time else '—' }}</td>
+          <td class="text-muted fs-xs">
+            {% if scan.start_time and scan.end_time %}
+              {{ ((scan.end_time - scan.start_time).total_seconds() | int) }}s
+            {% else %}—{% endif %}
+          </td>
+          <td>
+            <div style="display:flex; gap:0.4rem;">
+              <a href="{{ url_for('scan.scan_detail', scan_id=scan.scan_id) }}" class="btn btn-ghost btn-sm">View</a>
+              {% if scan.status == 'completed' %}
+              <a href="{{ url_for('report.download_report', scan_id=scan.scan_id, fmt='pdf') }}"
+                 class="btn btn-primary btn-sm">PDF</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <div class="empty-icon">🔍</div>
+    <h3>No scans yet</h3>
+    <p>Start your first vulnerability scan to see results here.</p>
+    <a href="{{ url_for('scan.new_scan') }}" class="btn btn-primary">🚀 Start First Scan</a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
